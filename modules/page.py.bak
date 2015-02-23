@@ -1,0 +1,102 @@
+#!/usr/bin/env python
+# coding: utf8
+from gluon import *
+from fbdb import *
+
+class Page:
+    def __init__(self, fid):
+        
+        rows= fbdb(fbdb.page.fid==fid).select().first()
+        
+        self.name = name
+        self.number = number
+        self.balance = balance
+ 
+    def deposit(self, amount):
+        if amount <= 0:
+             raise ValueError('amount must be positive')
+        self.balance += amount
+ 
+    def withdraw(self, amount):
+        if amount > self.balance:
+            raise RuntimeError('balance not enough')
+        self.balance -= amount
+ 
+    def __str__(self):
+        return 'Account({0}, {1}, {2})'.format(
+            self.name, self.number, self.balance)
+
+
+    
+    
+    
+    
+    
+    
+    
+    fbdb.define_table('page',
+    Field('fid', 'string', unique=True),
+    Field('about', 'string'),
+    Field('attire', 'string'),
+    Field('band_members', 'string'),
+    Field('best_page', 'text'),
+    Field('birthday', 'string'),
+    Field('booking_agent', 'string'),
+    Field('can_post', 'boolean'),
+    Field('category', 'string'),
+    Field('category_list', 'text'),
+    Field('checkins', 'integer'),
+    Field('company_overview', 'string'),
+    Field('cover_id', 'string'),
+    Field('cover_source', 'string'),
+    Field('cover_offset_y', 'integer'),
+    Field('cover_offset_x', 'integer'),
+    Field('current_location', 'string'),
+    Field('description', 'string'),
+    Field('directed_by', 'string'),
+    Field('founded', 'string'),
+    Field('general_info', 'string'),
+    Field('general_manager', 'string'),
+    Field('hometown', 'string'),
+    Field('hours', 'text'),
+    Field('is_permanently_closed', 'boolean'),
+    Field('is_published', 'boolean'),
+    Field('is_unclaimed', 'boolean'),
+    Field('likes', 'integer'),
+    Field('link', 'string'),
+    Field('country', 'string'),
+    Field('city', 'string'),
+    Field('longitude', 'double'),
+    Field('zip', 'string'),
+    Field('state', 'string'),
+    Field('street', 'string'),
+    Field('located_in', 'string'),
+    Field('latitude', 'double'),
+    Field('mission', 'string'),
+    Field('name', 'string'),
+    Field('parking_street', 'integer'),
+    Field('parking_lot', 'integer'),
+    Field('parking_valet', 'integer'),
+    Field('phone', 'string'),
+    Field('press_contact', 'string'),
+    Field('price_range', 'text'),
+    Field('products', 'string'),
+    Field('services_kids', 'integer'),
+    Field('services_delivery', 'integer'),
+    Field('services_walkins', 'integer'),
+    Field('services_catering', 'integer'),
+    Field('services_reserve', 'integer'),
+    Field('services_groups', 'integer'),
+    Field('services_waiter', 'integer'),
+    Field('services_outdoor', 'integer'),
+    Field('services_takeout', 'integer'),
+    Field('specialties_coffee', 'integer'),
+    Field('specialties_drinks', 'integer'),
+    Field('specialties_breakfast', 'integer'),
+    Field('specialties_dinner', 'integer'),
+    Field('specialties_lunch', 'integer'),
+    Field('talking_about_count', 'integer'),
+    Field('username', 'string'),
+    Field('website', 'string'),
+    Field('were_here_count', 'integer')
+)

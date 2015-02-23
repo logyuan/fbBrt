@@ -1,0 +1,33 @@
+# coding: utf8
+fbpl = DAL("sqlite://storage.sqlite")
+
+fbpl.define_table('place',Field('placeid', unique=True),Field('name'),Field('latitude'),Field('longitude'),Field('category'),Field('category_list','text'),Field('zip'),Field('link'),Field('old_ids'), format='%(placename)s')
+fbpl.define_table('social_counts', Field('placeid',fbpl.place),Field('date_time', 'datetime', default=request.now), Field('checkins'),Field('likes'),Field('were_here_count'))
+
+fbpl.define_table('graphAPI_Error', Field('placeid',fbpl.place),Field('date_time', 'datetime', default=request.now), Field('code'),Field('error_msg'))
+
+fbpl.define_table('merged_place', Field('placeid',fbpl.place),Field('date_time', 'datetime', default=request.now), Field('merge_to'),Field('name'),Field('latitude'),Field('longitude'),Field('category'),Field('category_list','text'),Field('zip'),Field('link'),Field('old_ids'))
+
+fbpl.define_table('update_log', Field('start_date_time', 'datetime', default=request.now),Field('end_date_time', 'datetime') )
+
+#fbpl.place.placeid.requires=IS_NOT_EMPTY()
+
+fbpl.place.placeid.requires=IS_NOT_EMPTY()
+fbpl.place.name.requires=IS_NOT_EMPTY()
+fbpl.place.latitude.requires=IS_NOT_EMPTY()
+fbpl.place.longitude.requires=IS_NOT_EMPTY()
+fbpl.place.category.requires=IS_NOT_EMPTY()
+#fbpl.place.old_ids.requires=IS_IN_DB(fbpl, fbpl.social_counts.placeid)
+fbpl.place.link.requires=IS_URL()
+
+
+fbpl.social_counts.placeid.requires=IS_NOT_EMPTY()
+#fbpl.social_counts.placeid.requires=IS_IN_DB(fbpl, fbpl.place.placeid)
+fbpl.social_counts.checkins.requires=IS_NOT_EMPTY()
+fbpl.social_counts.likes.requires=IS_NOT_EMPTY()
+fbpl.social_counts.were_here_count.requires=IS_NOT_EMPTY()
+
+fbpl.graphAPI_Error.placeid.requires=IS_NOT_EMPTY()
+
+fbpl.merged_place.placeid.requires=IS_NOT_EMPTY()
+fbpl.merged_place.merge_to.requires=IS_NOT_EMPTY()

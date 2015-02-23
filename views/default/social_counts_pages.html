@@ -1,0 +1,6 @@
+{{extend 'layout.html'}}
+<h1>{{=pagename}}</h1>
+{{for dt in dtlist:}}
+{{=LI(A(dt, _href=URL("social_counts_month",args=[pageid,dt])))}}
+{{pass}}
+{{=social_counts}}

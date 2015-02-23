@@ -1,0 +1,8 @@
+{{
+import cStringIO
+stream=cStringIO.StringIO()
+rows.export_to_csv_file(stream)
+response.headers['Content-Type']='application/vnd.ms-excel'
+response.headers['Content-disposition']='attachment; filename=' + pagename + date + '.csv'
+response.write(stream.getvalue(), escape=False)
+}}

@@ -1,0 +1,31 @@
+# coding: utf8
+# try something like
+def index(): return dict(message="hello from fbclass.py")
+
+class Page:
+    def __init__(self, fid):
+        
+        row= fbdb(fbdb.page.fid==fid).select().first()
+        if not row:
+            self.fid = None
+            self.likes = None
+            self.talking_about_count = None
+            self.cover_source = None
+            self.link = None
+            self.name = None
+        else:
+            self.fid = row.fid
+            self.likes = row.likes
+            self.talking_about_count = row.talking_about_count
+            self.cover_source = row.cover_source
+            self.link = row.link
+            self.name = row.name
+    
+    
+    def getSocialCount(self, date):
+        
+        return None
+    
+    def getPagePosts(self, pageid):
+        
+        return None

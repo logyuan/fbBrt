@@ -1,0 +1,103 @@
+# -*- coding: utf-8 -*-
+# this file is released under public domain and you can use without limitations
+
+#########################################################################
+## This is a sample controller
+## - index is the default action of any application
+## - user is required for authentication and authorization
+## - download is for downloading files uploaded in the db (does streaming)
+## - call exposes all registered services (none by default)
+#########################################################################
+
+
+
+
+
+
+def index():
+    """
+    example action using the internationalization operator T and flash
+    rendered by views/default/index.html or views/generic.html
+
+    if you need a simple wiki simple replace the two lines below with:
+    return auth.wiki()
+    
+    """
+    places = fbpl().select(fbpl.place.ALL, orderby=fbpl.place.id)
+    user = auth.user
+    if user:
+        response.flash = T('You are %(name)s', dict(name=user['first_name']))
+        return dict(message=T('Hello, Facebook is telling that you are %(first_name)s %(last_name)s', dict(first_name=user['first_name'], last_name=user['last_name'])),places=places)
+    response.flash = T('Welcome to web2py')
+   
+    return dict(message=T('Hello, please login'),places=places)
+
+@auth.requires_login()
+def social_counts():
+    placeid = request.args(0)  or redirect(URL('index'))
+    placename = fbpl(fbpl.place.placeid== placeid).select()[0].name
+    #social_counts = fbpl(fbpl.social_counts.placeid== placeid).select()
+    query = fbpl.social_counts.placeid == placeid
+    #social_counts = SQLFORM.smartgrid(fbpl.social_counts,constraints = {'social_counts':query},user_signature=False, create=False, deletable=False, editable=False, maxtextlength = 240)
+    social_counts = SQLFORM.grid(query,fbpl.social_counts,user_signature=False, create=False, deletable=False, editable=False,paginate=240, maxtextlength = 240, orderby = 'id DESC')
+    latitude =  fbpl(fbpl.place.placeid== placeid).select()[0].latitude
+    longitude =  fbpl(fbpl.place.placeid== placeid).select()[0].longitude
+    return dict(social_counts=social_counts, placename=placename,latitude=latitude,longitude=longitude)
+
+def social_counts_all():
+    social_counts = SQLFORM.grid(fbpl.social_counts,user_signature=False, create=False, deletable=False, editable=False,paginate=100, maxtextlength = 240, orderby = 'id DESC')
+    return dict(social_counts=social_counts)
+    
+    
+def user():
+    """
+    exposes:
+    http://..../[app]/default/user/login
+    http://..../[app]/default/user/logout
+    http://..../[app]/default/user/register
+    http://..../[app]/default/user/profile
+    http://..../[app]/default/user/retrieve_password
+    http://..../[app]/default/user/change_password
+    http://..../[app]/default/user/manage_users (requires membership in 
+    use @auth.requires_login()
+        @auth.requires_membership('group name')
+        @auth.requires_permission('read','table name',record_id)
+    to decorate functions that need access control
+    """
+    return dict(form=auth())
+
+@cache.action()
+def download():
+    """
+    allows downloading of uploaded files
+    http://..../[app]/default/download/[filename]
+    """
+    return response.download(request, db)
+
+
+def call():
+    """
+    exposes services. for example:
+    http://..../[app]/default/call/jsonrpc
+    decorate with @services.jsonrpc the functions to expose
+    supports xml, json, xmlrpc, jsonrpc, amfrpc, rss, csv
+    """
+    return service()
+
+
+@auth.requires_signature()
+def data():
+    """
+    http://..../[app]/default/data/tables
+    http://..../[app]/default/data/create/[table]
+    http://..../[app]/default/data/read/[table]/[id]
+    http://..../[app]/default/data/update/[table]/[id]
+    http://..../[app]/default/data/delete/[table]/[id]
+    http://..../[app]/default/data/select/[table]
+    http://..../[app]/default/data/search/[table]
+    but URLs must be signed, i.e. linked with
+      A('table',_href=URL('data/tables',user_signature=True))
+    or with the signed load operator
+      LOAD('default','data.load',args='tables',ajax=True,user_signature=True)
+    """
+    return dict(form=crud())

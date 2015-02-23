@@ -1,0 +1,638 @@
+# coding: utf8
+# try something like
+import urllib
+import json
+import dateutil
+import datetime
+import string
+import re
+import itertools
+from collections import Counter
+from collections import OrderedDict
+from dateutil import parser
+from datetime import timedelta
+import jieba
+import jieba.analyse
+import jieba.posseg as pseg
+from snownlp import SnowNLP
+from snownlp import sentiment
+from datetime import timedelta
+from operator import itemgetter
+import codecs
+#sentiment.train('/usr/local/lib/python2.7/site-packages/snownlp/sentiment/blue.txt', '/usr/local/lib/python2.7/site-packages/snownlp/sentiment/green.txt')
+#sentiment.save('/usr/local/lib/python2.7/site-packages/snownlp/sentiment/sentiment.marshal')
+jieba.set_dictionary('/Applications/web2py.app/Contents/Resources/applications/fsr/static/dict.txt.big.txt')
+jieba.load_userdict('/Applications/web2py.app/Contents/Resources/applications/fsr/static/userdict.txt')
+jieba.analyse.set_stop_words('/Applications/web2py.app/Contents/Resources/applications/fsr/static/stop_words.txt')
+jieba.analyse.set_idf_path('/Applications/web2py.app/Contents/Resources/applications/fsr/static/idf.txt.big.txt')
+
+stopwords_file = open('/Applications/web2py.app/Contents/Resources/applications/fsr/static/stop_words.txt', 'r')
+stopwords = [unicode(line.strip('\n'), "utf-8") for line in stopwords_file.readlines()]
+
+
+#jieba.initialize()
+
+
+delEnStr = string.punctuation + ' ' + string.digits
+delZhStr = u'《》（）&%￥#@！{}【】「」『』？｜，、。：；丶～　' + delEnStr.encode('utf8')
+
+def commentsByKeywords(key):
+    rows=fbdb(fbdb.news.title.like(key)).select()
+    newslist = []
+    for row in rows:
+        newslist.add(row["fid"])
+    rows = fbdb(fbdb.news_comments.news_fid.belongs(newslist)).select()
+    comments=[]
+    likes=[]
+    for row in rows:
+        if row["likes"] > 20:
+            comments.add(row["message"])
+            likes.add(row["likes"])
+        
+            
+    return 
+    
+def fix_url():
+    rows = fbdb(fbdb.news_comments.id<>'').select()
+    for row in rows:
+        fid=row["fid"]
+        news_fid = fid.split('_')[0]
+        #url = "http://" + urllib.quote(href.split("http://")[1])
+        #og = get_og_url(url)
+        #fid = og["fid"]
+        #fb_url = og["fb_url"]
+
+        row.update_record(news_fid=news_fid)
+        
+@auth.requires_login()
+def get_og_url(url):
+    graph = getGraph()
+    result = graph.request(url)
+    delay()
+    fid = result["og_object"]["id"] if 'og_object' in result else None
+    fb_url = result["og_object"]["url"] if 'og_object' in result else None
+    comment_count = result["share"]["comment_count"] if 'comment_count' in result["share"] else None
+    share_count = result["share"]["share_count"] if 'share_count' in result["share"] else None
+    og = {"fid":fid, "fb_url":fb_url, "comment_count":comment_count, "share_count":share_count }
+    return og
+
+def test2():
+    ids='772426282799217'
+    from_team='連勝文'
+    news_source= '自由時報電子報'
+    result=getNewsComments(ids, from_team, news_source)
+
+    return dict(result=result)
+
+
+def fix_seg():
+    rows = fbdb(fbdb.news_comments.id <>'').select()
+    for row in rows:
+        message = row["message"]
+        segment = list(jieba.cut(message))
+        row.update_record(segment=segment)
+
+def index():
+    started_time = datetime.datetime.now()
+    kekenews_url = "https://www.kimonolabs.com/api/246gib62?apikey=22879e6cd7538eea6e95b90aa70afccc"
+    #kekenews_url = "https://www.kimonolabs.com/api/7n4kbql8?apikey=22879e6cd7538eea6e95b90aa70afccc"
+    
+    #kimono_api(kekenews_url, "柯文哲")
+    lien_url=  "https://www.kimonolabs.com/api/2ogbacm8?apikey=22879e6cd7538eea6e95b90aa70afccc"
+    #lien_url=  "https://www.kimonolabs.com/api/62jrnwkg?apikey=22879e6cd7538eea6e95b90aa70afccc"
+    
+    #kimono_api(lien_url, "連勝文")
+    today = datetime.datetime.today()
+    date = today - timedelta(days=7)
+    fromdate = datetime.datetime.strftime(date, "%Y/%m/%d")
+    todate =  datetime.datetime.strftime(today, "%Y/%m/%d")
+    #checkDBNewsComments()
+    checkDBNewsCommentsFromDate(fromdate)
+    ended_time = datetime.datetime.now()
+    fbdb.event_logs.insert(function='checkDBNewsComments',started_time=started_time, ended_time=ended_time)
+    fbdb.commit()
+    
+    return "OK"    
+        
+def kimono_api(url, from_team): 
+    
+    response = urllib.urlopen(url)
+    data = json.load(response)
+    updated_time = parser.parse(data["lastsuccess"]) + timedelta(hours=8)
+    news_array = data["results"]["collection1"]
+    for news in news_array:
+        date_time=news["datetime"]
+        if u' 小時前' in date_time:
+            hours = int(date_time.strip(u' 小時前'))
+            date_time = updated_time - timedelta(hours=hours)
+        elif u' 分鐘前' in date_time:
+            minutes = int(date_time.strip(u' 分鐘前'))
+            date_time = updated_time - timedelta(minutes=minutes)
+        else :
+            date_time = date_time.replace(u'年', '/').replace(u'月', '/').strip(u'日')
+            date_time=parser.parse(date_time) + timedelta(hours=12)
+        
+        source=news["source"]
+        summary=news["summary"]
+        title=news["title"]["text"]
+        href=news["title"]["href"]
+        photo=news["photo"]["src"]
+        
+        related_news = []
+        related_news_date_time = []
+        related_news_source = []
+       
+        if isinstance(news["related_news_datetime"], list):
+            for item in news["related_news_datetime"]:
+                if u' 小時前' in item:
+                    hours = int(item.strip(u' 小時前'))
+                    item = updated_time - timedelta(hours=hours)
+                    related_news_date_time.append(item)
+                elif u' 分鐘前' in item:
+                    minutes = int(item.strip(u' 分鐘前'))
+                    item = updated_time - timedelta(minutes=minutes)
+                    related_news_date_time.append(item)
+                else :
+                    item = item.replace(u'年', '/').replace(u'月', '/').strip(u'日')
+                    item=parser.parse(item) + timedelta(hours=12)
+                    related_news_date_time.append(item)
+            related_news = news["related_news"]
+            related_news_source =news["related_news_source"]
+        elif news["related_news_datetime"] == "":
+            pass
+        else:
+            if u' 小時前' in news["related_news_datetime"]:
+                hours = int(news["related_news_datetime"].strip(u' 小時前'))
+                related_news_date_time2 = updated_time - timedelta(hours=hours)
+            elif u' 分鐘前' in news["related_news_datetime"]:
+                minutes = int(news["related_news_datetime"].strip(u' 分鐘前'))
+                related_news_date_time2 = updated_time - timedelta(minutes=minutes)
+            else :
+                related_news_date_time2 = news["related_news_datetime"].replace(u'年', '/').replace(u'月', '/').strip(u'日')
+                related_news_date_time2=parser.parse(related_news_date_time2) + timedelta(hours=12)
+            
+            related_news.append(news["related_news"])
+            related_news_date_time.append(related_news_date_time2)
+            related_news_source.append(news["related_news_source"])
+        if href != '':
+            row = fbdb(fbdb.news.href==href).select().first()
+            if not row:
+                url = "http://" + urllib.quote(href.split("http://")[1])
+                og = get_og_url(url)
+                fid = og["fid"]
+                fb_url=og["fb_url"]
+                share_count = og["share_count"]
+                comment_count = og["comment_count"]
+                
+                fbdb.news.insert(fid=fid, fb_url=fb_url, href=href, date_time=date_time, source=source, summary=summary, title=title, photo=photo, related_news=json.dumps(related_news), related_news_date_time=related_news_date_time, related_news_source=json.dumps(related_news_source),from_team=from_team, share_count=share_count, comment_count=comment_count )
+                fbdb.commit()
+            
+            #getUrlSocialCount(fb_url)
+    
+    #return json.dumps(data)
+    return "Success!"
+    #return dict(message="hello from newsAPI.py")
+
+
+    
+    
+def checkDBNewsCommentsFromDate(from_date):
+    from_date = datetime.datetime.strptime(from_date, "%Y/%m/%d")
+    rows = fbdb(fbdb.news.date_time >= from_date).select()
+    for row in rows:
+        ids = row["fid"]
+        if ids != None:
+            #ids = "http://" + urllib.quote(ids.split("http://")[1])
+            from_team = row["from_team"]
+            news_source = row["source"]
+            getNewsComments(ids, from_team, news_sources)
+    
+    
+def checkDBNewsComments():
+    rows = fbdb(fbdb.news.id <> '').select()
+    for row in rows:
+        ids = row["fid"]
+        if ids != None:
+            #ids = "http://" + urllib.quote(ids.split("http://")[1])
+            from_team = row["from_team"]
+            news_source = row["source"]
+            getNewsComments(ids, from_team, news_source)
+        
+    return "Ok"
+
+def BestComments():
+    
+    
+    stoplist = list(delZhStr)
+    stoplist.extend(stopwords)
+    p_wordclouds = []
+    p_wordcloud = []
+    p_wordclouds2 = []
+    
+
+    
+    male_wordcloud = []
+    female_wordcloud = []
+    
+    male_wordclouds = []
+    male_wordclouds_a = []
+    male_wordclouds_n = []
+    male_wordclouds_nr = []
+    male_wordclouds_v = []
+    
+    
+    female_wordclouds = []
+    female_wordclouds_a = []
+    female_wordclouds_n = []
+    female_wordclouds_nr = []
+    female_wordclouds_v = []
+    
+    
+    male_wordcloud_a = []
+    male_wordcloud_n = []
+    male_wordcloud_nr = []
+    male_wordcloud_v = []
+    
+
+    female_wordcloud_a = []
+    female_wordcloud_n = []
+    female_wordcloud_nr = []
+    female_wordcloud_v = []
+    
+    wordcloud_a = []
+    wordcloud_n = []
+    wordcloud_nr = []
+    wordcloud_v = []
+    wordcloud_a2 = []
+    wordcloud_n2 = []
+    wordcloud_nr2 = []
+    wordcloud_v2 = []
+    
+    now = datetime.datetime.today()
+    q_time = now-timedelta(days=7)
+    #rows = fbdb((fbdb.news_comments.like_count >= 1)&(fbdb.news_comments.from_team=='連勝文')&(fbdb.news_comments.created_time >=q_time)).select()
+    rows = fbdb(fbdb.news_comments.id <>'').select()
+    for row in rows:
+        #segments = list(set(row['segment']))
+        segments = pseg.cut(row['message'])
+        count = row["like_count"] #// 10
+        #count= 1
+        wordclouds_a = []
+        wordclouds_n = []
+        wordclouds_nr = []
+        wordclouds_v = []
+        for j in range(0, count):
+            for i in segments:
+                if (i.word not in stoplist):
+                    p_wordclouds2.append(i.word)
+                if (re.search("^a", i.flag) <> None)&(i.word not in stoplist):
+                    wordclouds_a.append(i.word)
+                elif (i.flag =='n')&(i.word not in stoplist):
+                    wordclouds_n.append(i.word)
+                elif (i.flag =='nr')&(i.word not in stoplist):
+                    wordclouds_nr.append(i.word)
+                elif (re.search("^v", i.flag) <> None)&(i.word not in stoplist):
+                    wordclouds_v.append(i.word)
+        p_wordclouds.extend(p_wordclouds2)
+        userid = row["from_id"]
+        user = fbdb(fbdb.people.uid==userid).select().first()
+        sex = user['gender'] if user else None
+        #likes = row['likes'] if (('likes' in row) & (row['likes'] != None) & (row['likes'] != {})) else []
+        #for like in likes:
+        wordcloud_a2.extend(list(set(wordclouds_a)))
+        wordcloud_n2.extend(list(set(wordclouds_n)))
+        wordcloud_nr2.extend(list(set(wordclouds_nr)))
+        wordcloud_v2.extend(list(set(wordclouds_v)))
+        
+        if sex =='female':
+            female_wordclouds.extend(list(set(p_wordclouds2)))
+            female_wordclouds_a.extend(list(set(wordclouds_a)))
+            female_wordclouds_n.extend(list(set(wordclouds_n)))
+            female_wordclouds_nr.extend(list(set(wordclouds_nr)))
+            female_wordclouds_v.extend(list(set(wordclouds_v)))
+        elif sex =='male':
+            male_wordclouds.extend(list(set(p_wordclouds2)))
+            male_wordclouds_a.extend(list(set(wordclouds_a)))
+            male_wordclouds_n.extend(list(set(wordclouds_n)))
+            male_wordclouds_nr.extend(list(set(wordclouds_nr)))
+            male_wordclouds_v.extend(list(set(wordclouds_v)))
+        else:
+            pass
+    for item in Counter(wordcloud_a2).most_common(150):
+        #s = SnowNLP(item[0]) , 'tag': s.tags
+        wordcloud_a.append({'name': item[0] , 'size': item[1]})
+    for item in Counter(wordcloud_n2).most_common(150):
+        #s = SnowNLP(item[0]) , 'tag': s.tags
+        wordcloud_n.append({'name': item[0] , 'size': item[1]})
+    for item in Counter(wordcloud_nr2).most_common(150):
+        #s = SnowNLP(item[0]) , 'tag': s.tags
+        wordcloud_nr.append({'name': item[0] , 'size': item[1]})
+    for item in Counter(wordcloud_v2).most_common(150):
+        #s = SnowNLP(item[0]) , 'tag': s.tags
+        wordcloud_v.append({'name': item[0] , 'size': item[1]})
+    
+    for item in Counter(female_wordclouds).most_common(150):
+        #s = SnowNLP(item[0]) , 'tag': s.tags
+        female_wordcloud.append({'name': item[0] , 'size': item[1]})
+    for item in Counter(male_wordclouds).most_common(150):
+        #s = SnowNLP(item[0]) , 'tag': s.tags
+        male_wordcloud.append({'name': item[0] , 'size': item[1]})
+
+    list_a_female100=[]
+    list_n_female100=[]
+    list_nr_female100=[]
+    list_v_female100=[]
+    
+    for item in Counter(female_wordclouds_a).most_common(100) :
+        #s = SnowNLP(item[0]) , 'tag': s.tags
+        female_wordcloud_a.append({'name': item[0] , 'size': item[1]})
+        list_a_female100.append(item[0])
+    
+    for item in Counter(female_wordclouds_n).most_common(100):
+        #s = SnowNLP(item[0]) , 'tag': s.tags
+        female_wordcloud_n.append({'name': item[0] , 'size': item[1]})
+        list_n_female100.append(item[0])
+        
+    for item in Counter(female_wordclouds_nr).most_common(100):
+        #s = SnowNLP(item[0]) , 'tag': s.tags
+        female_wordcloud_nr.append({'name': item[0] , 'size': item[1]})
+        list_nr_female100.append(item[0])
+        
+    for item in Counter(female_wordclouds_v).most_common(100):
+        #s = SnowNLP(item[0]) , 'tag': s.tags
+        female_wordcloud_v.append({'name': item[0] , 'size': item[1]})
+        list_v_female100.append(item[0])
+    
+    list_a_male100=[]
+    list_n_male100=[]
+    list_nr_male100=[]
+    list_v_male100=[]
+    
+    for item in Counter(male_wordclouds_a).most_common(100):
+        #s = SnowNLP(item[0]) , 'tag': s.tags
+        male_wordcloud_a.append({'name': item[0] , 'size': item[1]})
+        list_a_male100.append(item[0])
+    
+    for item in Counter(male_wordclouds_n).most_common(100):
+        #s = SnowNLP(item[0]) , 'tag': s.tags
+        male_wordcloud_n.append({'name': item[0] , 'size': item[1]})
+        list_n_male100.append(item[0])
+        
+    for item in Counter(male_wordclouds_nr).most_common(100):
+        #s = SnowNLP(item[0]) , 'tag': s.tags
+        male_wordcloud_nr.append({'name': item[0] , 'size': item[1]})
+        list_nr_male100.append(item[0])
+    
+    for item in Counter(male_wordclouds_v).most_common(100):
+        #s = SnowNLP(item[0]) , 'tag': s.tags
+        male_wordcloud_v.append({'name': item[0] , 'size': item[1]})
+        list_v_male100.append(item[0])
+        
+    female_wordcloud_a_special =[]
+    female_wordcloud_n_special =[]
+    female_wordcloud_nr_special =[]
+    female_wordcloud_v_special =[]
+    
+    for item in Counter(female_wordclouds_a).most_common(100):
+        if item[0] not in list_a_male100:
+            female_wordcloud_a_special.append({'name': item[0] , 'size': item[1]})
+    
+    for item in Counter(female_wordclouds_n).most_common(100):
+        if item[0] not in list_n_male100:
+            female_wordcloud_n_special.append({'name': item[0] , 'size': item[1]})
+
+    for item in Counter(female_wordclouds_nr).most_common(100):
+        if item[0] not in list_nr_male100:
+            female_wordcloud_nr_special.append({'name': item[0] , 'size': item[1]})
+        
+    for item in Counter(female_wordclouds_v).most_common(100):
+        if item[0] not in list_v_male100:
+            female_wordcloud_v_special.append({'name': item[0] , 'size': item[1]})
+            
+    male_wordcloud_a_special =[]
+    male_wordcloud_n_special =[]
+    male_wordcloud_nr_special =[] 
+    male_wordcloud_v_special =[] 
+    
+    for item in Counter(male_wordclouds_a).most_common(100):
+        if item[0] not in list_a_female100:
+            male_wordcloud_a_special.append({'name': item[0] , 'size': item[1]})
+    
+    for item in Counter(male_wordclouds_n).most_common(100):
+        if item[0] not in list_n_female100:
+            male_wordcloud_n_special.append({'name': item[0] , 'size': item[1]})
+
+    for item in Counter(male_wordclouds_nr).most_common(100):
+        if item[0] not in list_nr_female100:
+            male_wordcloud_nr_special.append({'name': item[0] , 'size': item[1]})
+    
+    for item in Counter(male_wordclouds_v).most_common(100):
+        if item[0] not in list_v_female100:
+            male_wordcloud_v_special.append({'name': item[0] , 'size': item[1]})    
+    
+            
+    flare = {}
+    flare = {"name":"flare", "children" : [{"name" : "female_wordcloud", "children":[{"name":"adj", "children":female_wordcloud_a_special},{"name":"v", "children":female_wordcloud_v_special}, {"name":"nr", "children":female_wordcloud_nr_special},{"name":"n", "children":female_wordcloud_n_special}]}] }
+    f = open('/Applications/web2py.app/Contents/Resources/applications/fsr/static/BestComments_female.json', 'w+')
+    f.write(json.dumps(flare,sort_keys=False,separators=(',',':'),indent=4))
+    f.close()
+    flare = {}
+    flare = {"name":"flare", "children" : [{"name" : "male_wordcloud", "children":[{"name":"adj", "children":male_wordcloud_a_special}, {"name":"v", "children":male_wordcloud_v_special}, {"name":"nr", "children":male_wordcloud_nr_special},{"name":"n", "children":male_wordcloud_n_special}]}] }
+    f = open('/Applications/web2py.app/Contents/Resources/applications/fsr/static/BestComments_male.json', 'w+')
+    f.write(json.dumps(flare,sort_keys=False,separators=(',',':'),indent=4))
+    f.close()
+
+    flare = {}
+    flare = {"name":"flare", "children" : [{"name" : "wordcloud", "children":[{"name":"adj", "children":wordcloud_a},{"name":"v", "children":wordcloud_v}, {"name":"nr", "children":wordcloud_nr},{"name":"n", "children":wordcloud_n}]}] }
+    f = open('/Applications/web2py.app/Contents/Resources/applications/fsr/static/BestComments.json', 'w+')
+    f.write(json.dumps(flare,sort_keys=False,separators=(',',':'),indent=4))
+    f.close()
+    
+    
+    f = codecs.open('/Applications/web2py.app/Contents/Resources/applications/fsr/static/wordcloud.txt', 'w+', 'utf-8')
+    for item in list(set(p_wordclouds)):
+        f.write(item+'\n')
+    f.close()
+    
+    return dict(message="OK")
+    #return len(rows)
+    #return json.dumps(female_wordclouds_nr)
+
+
+@auth.requires_login()
+def getNewsComments(ids, from_team, news_source):
+    import datetime
+    from datetime import timedelta
+    import time
+    #ids = "http://" + urllib.quote(ids.split("http://")[1])
+    graph = getGraph()
+    try:
+        qtext = 'id,from,message,comments,created_time,like_count,can_remove,likes.limit(1000)'
+        comments_arr=[]
+        data = []
+        next_p = None
+        after = ""
+        fb_obj = graph.request('comments' ,args={'ids':ids ,'fields': qtext, 'limit':50})
+        delay()
+        data = fb_obj[ids]["data"] #if "comments" in fb_obj[ids] else fb_obj[ids]["data"] 
+        if data != []:
+            if "paging" in fb_obj[ids]:
+                 next_p =fb_obj[ids]["paging"]["next"] if "next" in fb_obj[ids]["paging"] else None
+                 after = fb_obj[ids]["paging"]["cursors"]["after"]
+                
+       
+        while data != []:
+            for item in data:
+                created_time = parser.parse(item["created_time"])
+                fid = item["id"]
+                from_id = item["from"]["id"] if 'from' in item else None
+                getPeople(from_id)
+                from_name = item["from"]["name"] if 'from' in item else None
+                message = item["message"] if 'message' in item else None
+                comments_arr.append(message)
+                can_remove = item["can_remove"] if 'can_remove' in item else None
+                segment = list(jieba.cut(message))
+                #segment = pseg.cut(row['message'])
+                like_count = item["like_count"] if 'like_count' in item else 0
+                likes = item["likes"] if like_count > 0 else {}
+                
+                news_href = ids
+                fbdb.news_comments.update_or_insert(fbdb.news_comments.fid ==fid, fid=fid, from_id=from_id, from_name=from_name, message=message, created_time=created_time, likes=likes,like_count = like_count, from_team=from_team, news_source=news_source, news_href=news_href, segment=segment , news_fid=ids)
+                fbdb.commit()
+            #next = fb_obj["paging"]["next"] if "next" in fb_obj["paging"] else None
+            #qtext = next.split('fields=')[-1].split('&')[1] if next != None else 
+            
+            if next_p != None:
+                
+                fb_obj = graph.request('comments' ,args={'ids':ids ,'fields': qtext, 'limit':50, 'after': after })
+                delay()
+                #data = fb_obj2["data"]
+                data = fb_obj[ids]["data"]
+                if len(data) != 0:
+                    if "paging" in fb_obj[ids]:
+                         next_p =fb_obj[ids]["paging"]["next"] if "next" in fb_obj[ids]["paging"] else None
+                         after = fb_obj[ids]["paging"]["cursors"]["after"]
+                else:
+                    next_p = None
+                    after = None
+                
+            else:
+                data=[]
+
+        message = 'Successfully update the news Comments'
+        return dict(message=message, comments_arr=comments_arr)
+
+    except GraphAPIError, e:
+        #raise
+        message=e.result
+        fbdb.graphAPI_Error.insert(oid=ids,date_time=datetime.datetime.today(),error_msg=message)
+        fbdb.commit()
+        if message.get("error").get("code") == 2:
+            delay()
+            result=getNewsComments(ids, from_team, news_source)
+            return dict(message=message,comments_arr=result["comments_arr"])
+        return dict(message=message, comments_arr=[])
+        
+        
+        return dict(message=message)
+    except:
+        #raise
+        message=  "Unexpected error:", sys.exc_info()[0]
+        fbdb.graphAPI_Error.insert(oid=ids,date_time=datetime.datetime.today(),error_msg=message)
+        fbdb.commit()
+        return dict(message=message)
+    
+    return None
+
+@auth.requires_login()
+def getPeople(userid):
+    try:
+        graph = getGraph()
+        posts_data=graph.request(userid, args={'fields':'id,first_name,last_name,locale,gender,link,location,name,updated_time,age_range,hometown,education,timezone,work,picture'})
+        delay()
+        post = {}
+        post = posts_data
+    except GraphAPIError, e:
+        message=e.result
+        #fbdb.graphAPI_Error.insert(oid=userid,date_time=datetime.datetime.today(),error_msg=message)
+        #fbdb.commit()
+        code =message['error']['code']
+        if code ==100:
+            try:
+                posts_data=graph.request(userid, args={'fields':'id,name,category,picture,link,website'})
+                delay()
+                post = {}
+                post = posts_data
+                uid = post["id"]
+                name  = post["name"] if ('name' in post) else ''
+                category  = post["category"] if ('category' in post) else ''
+                picture = post["picture"]["data"]["url"] if ('picture' in post) else ''
+                link = post["link"] if ('link' in post) else ''
+                website = post["website"] if ('website' in post) else ''
+                gender = None
+                fbdb.people.insert(uid=uid, name=name, category=category, link=link, picture=picture, website=website)
+                fbdb.commit()
+                return "add page id"
+
+            except:
+                #raise
+                fbdb.people.insert(uid=userid, name="unavailable user")
+                message=  "Unexpected error:", sys.exc_info()[0]
+                fbdb.graphAPI_Error.insert(oid=userid,date_time=datetime.datetime.today(),error_msg=message)
+                fbdb.commit()
+                return "unavailable user"
+        
+    except:
+        #raise
+        message=  "Unexpected error:", sys.exc_info()[0]
+        fbdb.graphAPI_Error.insert(oid=userid,date_time=datetime.datetime.today(),error_msg=message)
+        fbdb.commit()
+        return "unknown error"
+
+    uid = post["id"]
+    first_name =  post["first_name"] if ('first_name' in post) else ''
+    last_name = post["last_name"] if ('last_name' in post) else ''
+    locale  = post["locale"]if ('locale' in post) else ''
+    gender  = post["gender"]if ('gender' in post) else ''
+    religion  = post["religion"]if ('religion' in post) else ''
+    location  = post["location"]if ('location' in post) else ''
+    name  = post["name"] if ('name' in post) else ''
+    website  = post["website"]if ('website' in post) else ''
+    relationship_status   = post["relationship_status"]if ('relationship_status' in post) else ''
+    updated_time = datetime.datetime.strptime(post["updated_time"],'%Y-%m-%dT%H:%M:%S+0000') if ('updated_time' in post) else ''
+    age_range  = post["age_range"]if ('age_range' in post) else ''
+    hometown  = post["hometown"]if ('hometown' in post) else ''
+    education  = post["education"]if ('education' in post) else ''
+    timezone  = post["timezone"]if ('timezone' in post) else ''
+    work  = post["work"]if ('work' in post) else ''
+    email  = post["email"]if ('email' in post) else ''
+    link = post["link"] if ('link' in post) else ''
+    picture = post["picture"]["data"]["url"] if ('picture' in post) else ''
+    fbdb.people.update_or_insert(fbdb.people.uid==uid, uid=uid, first_name=first_name, last_name=last_name, locale=locale, gender=gender, religion=religion, location=location, name=name, website=website, relationship_status=relationship_status, updated_time=updated_time, age_range=age_range, hometown=hometown, education=education, timezone=timezone, work=work, email=email, link=link, picture=picture)
+    fbdb.commit()
+    message = "all posts finished"
+    return dict(message=message)
+
+@auth.requires_login()
+def getUrlSocialCount(fb_url):
+    input_url = "http://" + urllib.quote(fb_url.split("http://")[1])
+    graph = getGraph()
+    try:
+        posts_data=graph.request(input_url)
+        delay()
+        share_count = posts_data["shares"] if 'shares' in posts_data else None
+        comment_count = posts_data["comments"] if 'comments' in posts_data else None
+        row = fbdb(fbdb.news.fb_url==fb_url).select().first()
+        if row:
+            row.update_record(share_count=share_count, comment_count=comment_count)
+    except GraphAPIError, e:
+        raise
+        message=e.result
+        fbdb.graphAPI_Error.insert(oid=url,date_time=datetime.datetime.today(),error_msg=message)
+        fbdb.commit()
+        return dict(message=message)
+        
+    return "OK"
+
+def delay():
+    time.sleep(1.5)

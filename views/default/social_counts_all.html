@@ -1,0 +1,6 @@
+{{extend 'layout.html'}}
+<h1>This is the default/social_counts_all.html template</h1>
+{{for dt in dtlist:}}
+{{=LI(A(dt, _href=URL("social_countsall_month",args=dt)))}}
+{{pass}}
+{{=social_counts}}

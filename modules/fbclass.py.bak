@@ -1,0 +1,39 @@
+#!/usr/bin/env python
+# coding: utf8
+from gluon import *
+# coding: utf8
+# try something like
+
+fbpp = DAL("mongodb://localhost/fbmayor", adapter_args=dict(foreign_keys=False), db_codec='utf8',pool_size=10)
+
+class Page:
+    def __init__(self, fid):
+        
+        row= fbpp(fbpp.page.fid==fid).select().first()
+        if not row:
+            self.fid = None
+            self.likes = None
+            self.talking_about_count = None
+            self.cover_source = None
+            self.link = None
+            self.name = None
+        else:
+            self.fid = row.fid
+            self.likes = row.likes
+            self.talking_about_count = row.talking_about_count
+            self.cover_source = row.cover_source
+            self.link = row.link
+            self.name = row.name
+    
+    
+    def getSocialCount(self, date):
+        
+        return None
+    
+    def getPagePosts(self, pageid):
+        
+        return None
+    
+    def __str__(self):
+        return 'Page({0}, {1}, {2}, {3} ,{4})'.format(
+            self.name, self.fid, self.cover_source, self.link)

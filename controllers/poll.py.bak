@@ -1,0 +1,935 @@
+# coding: utf-8
+# try something like
+import json
+import time
+import datetime
+import jieba
+import jieba.analyse
+import string
+import re
+from collections import Counter
+from collections import OrderedDict
+import itertools
+from snownlp import SnowNLP
+from snownlp import sentiment
+from datetime import timedelta
+import jieba.posseg as pseg
+import codecs
+
+
+#sentiment.train('/usr/local/lib/python2.7/site-packages/snownlp/sentiment/blue.txt', '/usr/local/lib/python2.7/site-packages/snownlp/sentiment/green.txt')
+#sentiment.save('/usr/local/lib/python2.7/site-packages/snownlp/sentiment/sentiment.marshal')
+jieba.set_dictionary('/Applications/web2py.app/Contents/Resources/applications/fsr/static/dict.txt.big.txt')
+jieba.load_userdict('/Applications/web2py.app/Contents/Resources/applications/fsr/static/userdict.txt')
+jieba.analyse.set_stop_words('/Applications/web2py.app/Contents/Resources/applications/fsr/static/stop_words.txt')
+jieba.analyse.set_idf_path('/Applications/web2py.app/Contents/Resources/applications/fsr/static/idf.txt.big.txt')
+
+stopwords_file = open('/Applications/web2py.app/Contents/Resources/applications/fsr/static/stop_words.txt', 'r')
+stopwords = [unicode(line.strip('\n'), "utf-8") for line in stopwords_file.readlines()]
+
+
+#jieba.initialize()
+
+
+delEnStr = string.punctuation + ' ' + string.digits
+delZhStr = u'《》（）&%￥#@！{}【】「」『』？｜，、。：；丶～　' + delEnStr.encode('utf8')
+
+
+
+class People:
+    def __init__(self, uid):
+        row = fbdb(fbdb.people.uid == uid).select().first()
+        result = ''
+        if not row:
+            result = getPeople(uid)
+            row = fbdb(fbdb.people.uid == uid).select().first()
+        if row:
+            self.fid = row.uid if 'uid' in row else None
+            self.name = row.name if 'name' in row else None
+            self.gender=row.gender if 'gender' in row else None
+            self.locale = row.locale if 'locale' in row else None
+            self.link = row.link if 'link' in row  else None
+            self.picture = row.picture if 'picture' in row  else None
+            self.like_count = row.like_count if 'like_count' in row  else 0
+            self.b_like_count = row.b_like_count if 'b_like_count' in row  else 0
+            self.g_like_count = row.g_like_count if 'g_like_count' in row  else 0
+            self.comment_count = row.comment_count if 'comment_count' in row  else 0
+            self.b_comment_count = row.b_comment_count if 'b_comment_count' in row else 0
+            self.g_comment_count = row.g_comment_count if 'g_comment_count' in row else 0
+            self.share_count = row.share_count if 'share_count' in row  else 0
+            self.b_share_count = row.b_share_count if 'b_share_count' in row  else 0
+            self.g_share_count = row.g_share_count if 'g_share_count' in row  else 0
+            self.share_links = row.share_links if 'share_links' in row else []
+            self.b_share_links = row.b_share_links if 'b_share_links' in row  else []
+            self.g_share_links = row.g_share_links if 'g_share_links' in row  else []
+            self.wordcloud = row.wordcloud if 'wordcloud' in row  else []
+            self.b_wordclouds = row.b_wordclouds if 'b_wordclouds' in row  else []
+            self.g_wordclouds = row.g_wordclouds if 'g_wordclouds' in row  else []
+        else:
+            self.fid = uid
+            self.name = "Not existing user"
+            self.gender = None
+        return None
+
+
+    def influence (self):
+        influence = comment_count * 0.5
+        return influence
+
+    def __str__(self):
+        return
+
+
+@auth.requires_login()
+def Sex(uid):
+    row = fbdb(fbdb.people.uid==uid).select().first()
+    if not row:
+        user = People(uid)
+        gender = user.gender
+    else:
+        gender = row["gender"] if 'gender' in row else None
+    return gender
+
+
+def BestComments():
+    
+    
+    stoplist = list(delZhStr)
+    stoplist.extend(stopwords)
+    p_wordclouds = []
+    p_wordcloud = []
+    p_wordclouds2 = []
+    
+
+    
+    male_wordcloud = []
+    female_wordcloud = []
+    
+    male_wordclouds = []
+    male_wordclouds_a = []
+    male_wordclouds_n = []
+    male_wordclouds_nr = []
+    male_wordclouds_v = []
+    
+    
+    female_wordclouds = []
+    female_wordclouds_a = []
+    female_wordclouds_n = []
+    female_wordclouds_nr = []
+    female_wordclouds_v = []
+    
+    
+    male_wordcloud_a = []
+    male_wordcloud_n = []
+    male_wordcloud_nr = []
+    male_wordcloud_v = []
+    
+
+    female_wordcloud_a = []
+    female_wordcloud_n = []
+    female_wordcloud_nr = []
+    female_wordcloud_v = []
+    
+    wordcloud_a = []
+    wordcloud_n = []
+    wordcloud_nr = []
+    wordcloud_v = []
+    wordcloud_a2 = []
+    wordcloud_n2 = []
+    wordcloud_nr2 = []
+    wordcloud_v2 = []
+    
+    now = datetime.datetime.today()
+    q_time = now-timedelta(days=56)
+    rows = fbdb((fbdb.comments.like_count >= 20)&(fbdb.comments.from_team=='柯文哲')&(fbdb.comments.created_time >=q_time)).select()
+    for row in rows:
+        #segments = list(set(row['segment']))
+        segments = pseg.cut(row['message'])
+        count = row["like_count"] // 10
+        #count= 1
+        wordclouds_a = []
+        wordclouds_n = []
+        wordclouds_nr = []
+        wordclouds_v = []
+        for j in range(0, count):
+            for i in segments:
+                p_wordclouds2.append(i.word)
+                if (re.search("^a", i.flag) <> None)&(i.word not in stoplist):
+                    wordclouds_a.append(i.word)
+                elif (i.flag =='n')&(i.word not in stoplist):
+                    wordclouds_n.append(i.word)
+                elif (i.flag =='nr')&(i.word not in stoplist):
+                    wordclouds_nr.append(i.word)
+                elif (re.search("^v", i.flag) <> None)&(i.word not in stoplist):
+                    wordclouds_v.append(i.word)
+        p_wordclouds.extend(p_wordclouds2)
+        userid = row["from_id"]
+        user = fbdb(fbdb.people.uid==userid).select().first()
+        sex = user['gender']
+        #likes = row['likes'] if (('likes' in row) & (row['likes'] != None) & (row['likes'] != {})) else []
+        #for like in likes:
+        wordcloud_a2.extend(list(set(wordclouds_a)))
+        wordcloud_n2.extend(list(set(wordclouds_n)))
+        wordcloud_nr2.extend(list(set(wordclouds_nr)))
+        wordcloud_v2.extend(list(set(wordclouds_v)))
+        
+        if sex =='female':
+            female_wordclouds.extend(list(set(p_wordclouds2)))
+            female_wordclouds_a.extend(list(set(wordclouds_a)))
+            female_wordclouds_n.extend(list(set(wordclouds_n)))
+            female_wordclouds_nr.extend(list(set(wordclouds_nr)))
+            female_wordclouds_v.extend(list(set(wordclouds_v)))
+        elif sex =='male':
+            male_wordclouds.extend(list(set(p_wordclouds2)))
+            male_wordclouds_a.extend(list(set(wordclouds_a)))
+            male_wordclouds_n.extend(list(set(wordclouds_n)))
+            male_wordclouds_nr.extend(list(set(wordclouds_nr)))
+            male_wordclouds_v.extend(list(set(wordclouds_v)))
+        else:
+            pass
+    for item in Counter(wordcloud_a2).most_common(150):
+        #s = SnowNLP(item[0]) , 'tag': s.tags
+        wordcloud_a.append({'name': item[0] , 'size': item[1]})
+    for item in Counter(wordcloud_n2).most_common(150):
+        #s = SnowNLP(item[0]) , 'tag': s.tags
+        wordcloud_n.append({'name': item[0] , 'size': item[1]})
+    for item in Counter(wordcloud_nr2).most_common(150):
+        #s = SnowNLP(item[0]) , 'tag': s.tags
+        wordcloud_nr.append({'name': item[0] , 'size': item[1]})
+    for item in Counter(wordcloud_v2).most_common(150):
+        #s = SnowNLP(item[0]) , 'tag': s.tags
+        wordcloud_v.append({'name': item[0] , 'size': item[1]})
+    
+    for item in Counter(female_wordclouds).most_common(150):
+        #s = SnowNLP(item[0]) , 'tag': s.tags
+        female_wordcloud.append({'name': item[0] , 'size': item[1]})
+    for item in Counter(male_wordclouds).most_common(150):
+        #s = SnowNLP(item[0]) , 'tag': s.tags
+        male_wordcloud.append({'name': item[0] , 'size': item[1]})
+
+    list_a_female100=[]
+    list_n_female100=[]
+    list_nr_female100=[]
+    list_v_female100=[]
+    
+    for item in Counter(female_wordclouds_a).most_common(100) :
+        #s = SnowNLP(item[0]) , 'tag': s.tags
+        female_wordcloud_a.append({'name': item[0] , 'size': item[1]})
+        list_a_female100.append(item[0])
+    
+    for item in Counter(female_wordclouds_n).most_common(100):
+        #s = SnowNLP(item[0]) , 'tag': s.tags
+        female_wordcloud_n.append({'name': item[0] , 'size': item[1]})
+        list_n_female100.append(item[0])
+        
+    for item in Counter(female_wordclouds_nr).most_common(100):
+        #s = SnowNLP(item[0]) , 'tag': s.tags
+        female_wordcloud_nr.append({'name': item[0] , 'size': item[1]})
+        list_nr_female100.append(item[0])
+        
+    for item in Counter(female_wordclouds_v).most_common(100):
+        #s = SnowNLP(item[0]) , 'tag': s.tags
+        female_wordcloud_v.append({'name': item[0] , 'size': item[1]})
+        list_v_female100.append(item[0])
+    
+    list_a_male100=[]
+    list_n_male100=[]
+    list_nr_male100=[]
+    list_v_male100=[]
+    
+    for item in Counter(male_wordclouds_a).most_common(100):
+        #s = SnowNLP(item[0]) , 'tag': s.tags
+        male_wordcloud_a.append({'name': item[0] , 'size': item[1]})
+        list_a_male100.append(item[0])
+    
+    for item in Counter(male_wordclouds_n).most_common(100):
+        #s = SnowNLP(item[0]) , 'tag': s.tags
+        male_wordcloud_n.append({'name': item[0] , 'size': item[1]})
+        list_n_male100.append(item[0])
+        
+    for item in Counter(male_wordclouds_nr).most_common(100):
+        #s = SnowNLP(item[0]) , 'tag': s.tags
+        male_wordcloud_nr.append({'name': item[0] , 'size': item[1]})
+        list_nr_male100.append(item[0])
+    
+    for item in Counter(male_wordclouds_v).most_common(100):
+        #s = SnowNLP(item[0]) , 'tag': s.tags
+        male_wordcloud_v.append({'name': item[0] , 'size': item[1]})
+        list_v_male100.append(item[0])
+        
+    female_wordcloud_a_special =[]
+    female_wordcloud_n_special =[]
+    female_wordcloud_nr_special =[]
+    female_wordcloud_v_special =[]
+    
+    for item in Counter(female_wordclouds_a).most_common(100):
+        if item[0] not in list_a_male100:
+            female_wordcloud_a_special.append({'name': item[0] , 'size': item[1]})
+    
+    for item in Counter(female_wordclouds_n).most_common(100):
+        if item[0] not in list_n_male100:
+            female_wordcloud_n_special.append({'name': item[0] , 'size': item[1]})
+
+    for item in Counter(female_wordclouds_nr).most_common(100):
+        if item[0] not in list_nr_male100:
+            female_wordcloud_nr_special.append({'name': item[0] , 'size': item[1]})
+        
+    for item in Counter(female_wordclouds_v).most_common(100):
+        if item[0] not in list_v_male100:
+            female_wordcloud_v_special.append({'name': item[0] , 'size': item[1]})
+            
+    male_wordcloud_a_special =[]
+    male_wordcloud_n_special =[]
+    male_wordcloud_nr_special =[] 
+    male_wordcloud_v_special =[] 
+    
+    for item in Counter(male_wordclouds_a).most_common(100):
+        if item[0] not in list_a_female100:
+            male_wordcloud_a_special.append({'name': item[0] , 'size': item[1]})
+    
+    for item in Counter(male_wordclouds_n).most_common(100):
+        if item[0] not in list_n_female100:
+            male_wordcloud_n_special.append({'name': item[0] , 'size': item[1]})
+
+    for item in Counter(male_wordclouds_nr).most_common(100):
+        if item[0] not in list_nr_female100:
+            male_wordcloud_nr_special.append({'name': item[0] , 'size': item[1]})
+    
+    for item in Counter(male_wordclouds_v).most_common(100):
+        if item[0] not in list_v_female100:
+            male_wordcloud_v_special.append({'name': item[0] , 'size': item[1]})    
+    
+            
+    flare = {}
+    flare = {"name":"flare", "children" : [{"name" : "female_wordcloud", "children":[{"name":"adj", "children":female_wordcloud_a_special},{"name":"v", "children":female_wordcloud_v_special}, {"name":"nr", "children":female_wordcloud_nr_special},{"name":"n", "children":female_wordcloud_n_special}]}] }
+    f = open('/Applications/web2py.app/Contents/Resources/applications/fsr/static/BestComments_female.json', 'w+')
+    f.write(json.dumps(flare,sort_keys=False,separators=(',',':'),indent=4))
+    f.close()
+    flare = {}
+    flare = {"name":"flare", "children" : [{"name" : "male_wordcloud", "children":[{"name":"adj", "children":male_wordcloud_a_special}, {"name":"v", "children":male_wordcloud_v_special}, {"name":"nr", "children":male_wordcloud_nr_special},{"name":"n", "children":male_wordcloud_n_special}]}] }
+    f = open('/Applications/web2py.app/Contents/Resources/applications/fsr/static/BestComments_male.json', 'w+')
+    f.write(json.dumps(flare,sort_keys=False,separators=(',',':'),indent=4))
+    f.close()
+
+    flare = {}
+    flare = {"name":"flare", "children" : [{"name" : "wordcloud", "children":[{"name":"adj", "children":wordcloud_a},{"name":"v", "children":wordcloud_v}, {"name":"nr", "children":wordcloud_nr},{"name":"n", "children":wordcloud_n}]}] }
+    f = open('/Applications/web2py.app/Contents/Resources/applications/fsr/static/BestComments.json', 'w+')
+    f.write(json.dumps(flare,sort_keys=False,separators=(',',':'),indent=4))
+    f.close()
+    
+    
+    f = codecs.open('/Applications/web2py.app/Contents/Resources/applications/fsr/static/wordcloud.txt', 'w+', 'utf-8')
+    for item in p_wordclouds:
+        f.write(item+'\n')
+    f.close()
+    
+    return dict(message="OK")
+    #return len(rows)
+    #return json.dumps(female_wordclouds_nr)
+
+def HottestComments():
+    '''
+    import jieba.posseg as pseg
+    stoplist = list(delZhStr)
+    stoplist.extend(stopwords)
+    p_wordclouds = []
+    p_wordcloud = []
+    rows = fbdb((fbdb.comments.comment_count> 10)&(fbdb.comments.from_team=='柯文哲')).select()
+    for row in rows:
+        segments = pseg.cut(row['message'])
+        count = row["like_count"] // 10
+        #count= 1
+        #p_wordclouds2 = [i.word for i in segments if i.word not in stoplist]
+        p_wordclouds2 = [i.word for i in segments if (i.flag =='a')&(i.word not in stoplist)]
+        sex = Sex(row["from_id"])
+        if sex =='female':
+            p_wordclouds.extend(p_wordclouds2)
+        likes = row['likes'] if (('likes' in row)&(row['likes'] != None)&(row['likes'] != {})) else []
+        for like in likes:
+            if Sex(like["id"]) =='female':
+                p_wordclouds.extend(p_wordclouds2)
+
+
+    for item in Counter(p_wordclouds).most_common(300):
+        #s = SnowNLP(item[0]) , 'tag': s.tags
+        p_wordcloud.append({'name': item[0], 'size': item[1]})
+    flare = {}
+    flare = {"name":flare, "children" :p_wordcloud }
+    f = open('/Applications/web2py.app/Contents/Resources/applications/fsr/static/HottestComments.json', 'w+')
+    f.write(json.dumps(flare,sort_keys=False,separators=(',',':'),indent=4))
+    f.close()
+    '''
+    return dict(message="OK")
+
+def index(): return dict(message="hello from poll.py")
+
+def personal_wordcloud():
+    rows = fbdb(fbdb.people.id <> '').select()
+    for row in rows:
+        user_wordcloud(row['uid'])
+    return "OK"
+
+def segmentation():
+    rows= fbdb(fbdb.comments.id <> '').select()
+    for row in rows:
+        fid = row['fid']
+        message = row['message']
+        segment = list(jieba.cut(message))
+        fbdb.comments.update_or_insert(fbdb.comments.fid ==fid, segment=segment)
+        fbdb.commit()
+
+@auth.requires_login()
+def mentions():
+    stoplist = list(delZhStr)
+    stoplist.extend(stopwords)
+    qstring = ''
+    str1= '%支持%柯P%'
+    str2='%支持%柯p%'
+    str3='%支持%柯文哲%'
+    str4 = '%遣辭%'
+    str5 = '%做事%'
+    str6 = '%感動%'
+    str7 = '%性格%'
+    #qstring= qstring + str1 +str2 + str3 +str4 +str5 +str6 +str7
+
+    #qstring = '%支持%柯p%'
+    qstring = '開車'
+    rows= fbdb(fbdb.comments.message.like(qstring)).select()
+
+    #rows= fbdb(fbdb.comments.message.like(qstring) |fbdb.comments.message.like(str2)|fbdb.comments.message.like(str3)|fbdb.comments.message.like(str4)|fbdb.comments.message.like(str5)|fbdb.comments.message.like(str6)|fbdb.comments.message.like(str7)).select()
+    all_dict = []
+    g_dict= []
+    b_dict= []
+    comments = []
+    g_comments=[]
+    b_comments=[]
+    people = []
+    g_people = []
+    b_people = []
+    all_time = []
+    g_time=[]
+    b_time = []
+    male_time=[]
+    female_time = []
+    female_comments=[]
+    male_comments=[]
+    female = []
+    male = []
+
+    for row in rows:
+        userid = row['from_id']
+        comment = row['message']
+
+        created_time = row['created_time'].strftime('%Y-%m-%dT%H:%M:%S')
+        people.append(userid)
+        comments.append(comment)
+        all_time.append(created_time)
+
+        user = fbdb(fbdb.people.uid==userid).select().first()
+        if user:
+            if user['gender'] == 'male':
+                male.append(userid)
+                male_comments.append(comment)
+                male_time.append(created_time)
+            elif user['gender'] == 'female':
+                female.append(userid)
+                female_comments.append(comment)
+                female_time.append(created_time)
+
+        if row['from_team'] == '柯文哲':
+            g_people.append(userid)
+            g_comments.append(comment)
+            g_time.append(created_time)
+            #g_dict.update({comment + ' by ' + userid : created_time.strftime('%Y-%m-%dT%H:%M:%S')})
+        else:
+            b_people.append(userid)
+            b_comments.append(comment)
+            b_time.append(created_time)
+            #b_dict.update({comment + ' by ' + userid : created_time.strftime('%Y-%m-%dT%H:%M:%S')})
+
+
+    a1 = list(set(zip(people,comments)))
+    a2 = dict(itertools.izip(comments, all_time))
+    a_orderdict = OrderedDict()
+    for a in a1:
+        uid = a[0]
+        temp = a_orderdict[uid] if uid in a_orderdict else []
+        s = SnowNLP(a[1])
+        temp.append({"comments" : a[1] , "update_time" : a2[a[1]], "sentiments" : s.sentiments})
+        a_orderdict.update({uid : temp})
+
+    g1 = list(set(zip(g_people,g_comments)))
+    g2 = dict(itertools.izip(g_comments, g_time))
+    g_orderdict = OrderedDict()
+    for g in g1:
+        uid = g[0]
+        temp = g_orderdict[uid] if uid in g_orderdict else []
+        s = SnowNLP(g[1])
+        temp.append({"comments" : g[1] , "update_time" : g2[g[1]], "sentiments" : s.sentiments})
+        g_orderdict.update({uid : temp})
+
+    b1 = list(set(zip(b_people,b_comments)))
+    b2 = dict(itertools.izip(b_comments, b_time))
+    b_orderdict = OrderedDict()
+    for b in b1:
+        uid = b[0]
+        temp = b_orderdict[uid] if uid in b_orderdict else []
+        s = SnowNLP(b[1])
+        temp.append({"comments" : b[1] , "update_time" : b2[b[1]], "sentiments" : s.sentiments})
+        b_orderdict.update({uid : temp})
+
+    f1 = list(set(zip(female,female_comments)))
+    f2 = dict(itertools.izip(female_comments, female_time))
+    f_orderdict = OrderedDict()
+    for f in f1:
+        uid = f[0]
+        temp = f_orderdict[uid] if uid in f_orderdict else []
+        s = SnowNLP(f[1])
+        temp.append({"comments" : f[1] , "update_time" : f2[f[1]], "sentiments" : s.sentiments})
+        f_orderdict.update({uid : temp})
+
+    m1 = list(set(zip(male,male_comments)))
+    m2 = dict(itertools.izip(male_comments, male_time))
+    m_orderdict = OrderedDict()
+    for m in m1:
+        uid = m[0]
+        temp = m_orderdict[uid] if uid in m_orderdict else []
+        s = SnowNLP(m[1])
+        temp.append({"comments" : m[1] , "update_time" : m2[m[1]], "sentiments" : s.sentiments})
+        m_orderdict.update({uid : temp})
+
+
+    wordclouds = []
+    m_arr=[]
+    for person in list(set(people)):
+        m_arr = a_orderdict[person]
+        segments=[]
+        for m in m_arr:
+            segment=[]
+            segment = list(jieba.cut(m['comments']))
+            segments.extend(segment)
+        segments = list(set(segments))
+        wordclouds2 = [i for i in segments if i not in stoplist]
+        wordclouds.extend(wordclouds2)
+    wordcloud=[]
+    for item in Counter(wordclouds).most_common(1000):
+        wordcloud.append({'count': item[1] , 'value': item[0]})
+
+    b_wordclouds = []
+    b_arr=[]
+    for person in list(set(b_people)):
+        m_arr = b_orderdict[person]
+        segments=[]
+        for m in m_arr:
+            segment=[]
+            segment = list(jieba.cut(m['comments']))
+            segments.extend(segment)
+        segments = list(set(segments))
+        b_wordclouds2 = [i for i in segments if i not in stoplist]
+        b_wordclouds.extend(b_wordclouds2)
+    b_wordcloud=[]
+    for item in Counter(b_wordclouds).most_common(1000):
+        b_wordcloud.append({'count': item[1] , 'value': item[0]})
+
+    g_wordclouds = []
+    g_arr=[]
+    for person in list(set(g_people)):
+        m_arr = g_orderdict[person]
+        segments=[]
+        for m in m_arr:
+            segment=[]
+            segment = list(jieba.cut(m['comments']))
+            segments.extend(segment)
+        segments = list(set(segments))
+        g_wordclouds2 = [i for i in segments if i not in stoplist]
+        g_wordclouds.extend(g_wordclouds2)
+    g_wordcloud=[]
+    for item in Counter(g_wordclouds).most_common(1000):
+        g_wordcloud.append({'count': item[1] , 'value': item[0]})
+
+
+    male_wordclouds = []
+    male_arr=[]
+    for person in list(set(male)):
+        m_arr = m_orderdict[person]
+        segments=[]
+        for m in m_arr:
+            segment=[]
+            segment = list(jieba.cut(m['comments']))
+            segments.extend(segment)
+        segments = list(set(segments))
+        male_wordclouds2 = [i for i in segments if i not in stoplist]
+        male_wordclouds.extend(male_wordclouds2)
+    male_wordcloud=[]
+    for item in Counter(male_wordclouds).most_common(1000):
+        male_wordcloud.append({'count': item[1] , 'value': item[0]})
+
+
+    female_wordclouds = []
+    female_arr=[]
+    for person in list(set(female)):
+        m_arr = f_orderdict[person]
+        segments=[]
+        for m in m_arr:
+            segment=[]
+            segment = list(jieba.cut(m['comments']))
+            segments.extend(segment)
+        segments = list(set(segments))
+        female_wordclouds2 = [i for i in segments if i not in stoplist]
+        female_wordclouds.extend(female_wordclouds2)
+    female_wordcloud=[]
+    for item in Counter(female_wordclouds).most_common(1000):
+        female_wordcloud.append({'count': item[1] , 'value': item[0]})
+
+
+    a_list= []
+    a_list= list(set(people))
+    male = 0
+    female = 0
+    for person in a_list:
+        row = fbdb(fbdb.people.uid == person).select().first()
+        if row:
+            gender = row['gender']
+            if gender == 'male':
+                male+= 1
+            elif gender == 'female':
+                female += 1
+            else:
+                pass
+    b_list=[]
+    b_list= list(set(b_people))
+    b_male = 0
+    b_female = 0
+    for person in b_list:
+        row = fbdb(fbdb.people.uid == person).select().first()
+        if row:
+            gender = row['gender']
+            if gender == 'male':
+                b_male+= 1
+            elif gender == 'female':
+                b_female += 1
+            else:
+                pass
+    g_list=[]
+    g_list= list(set(g_people))
+    g_male = 0
+    g_female = 0
+
+    for person in g_list:
+        row = fbdb(fbdb.people.uid == person).select().first()
+        if row:
+            gender = row['gender']
+            if gender == 'male':
+                g_male+= 1
+            elif gender == 'female':
+                g_female += 1
+            else:
+                pass
+
+    stat = {"All":{"total": len(set(people)), "male": male, "female": female} , "Blue": {"total": len(set(b_people)), "male": b_male, "female": b_female} , "Green":  {"total": len(set(g_people)), "male": g_male, "female": g_female} }
+
+    comment_arr=json.dumps(a_orderdict, sort_keys=False,separators=(',',':'),indent=4)
+    b_comment_arr=json.dumps(b_orderdict, sort_keys=False,separators=(',',':'),indent=4)
+    g_comment_arr=json.dumps(g_orderdict, sort_keys=False,separators=(',',':'),indent=4)
+    female_comment_arr=json.dumps(f_orderdict, sort_keys=False,separators=(',',':'),indent=4)
+    male_comment_arr=json.dumps(m_orderdict, sort_keys=False,separators=(',',':'),indent=4)
+
+    fbdb.mentions.insert(qstring=qstring, comment_arr = comment_arr, b_comment_arr = b_comment_arr,  g_comment_arr = g_comment_arr, male_comment_arr=male_comment_arr, female_comment_arr=female_comment_arr, comment_count = len(set(comments)), b_comment_count = len(set(b_comments)), g_comment_count = len(set(g_comments)), user_count = len(set(people)), b_user_count = len(set(b_people)), g_user_count = len(set(g_people)), updated_time=datetime.datetime.now(), stat=stat, wordcloud=wordcloud, female_wordcloud=female_wordcloud, male_wordcloud=male_wordcloud, b_wordcloud=b_wordcloud, g_wordcloud=g_wordcloud )
+
+    user_arr = json.dumps(a_orderdict, sort_keys=False,separators=(',',':'),indent=4)
+    with open('/usr/local/lib/python2.7/site-packages/snownlp/sentiment/blue.txt','a') as file:
+        for item in g_comments:
+            print>>file, item
+    return "OK"
+
+
+@auth.requires_login()
+def whole_wordcloud():
+    #rows = fbdb(fbdb.comments.fid == '497419873693331_497440607024591').select()
+    rows = fbdb(fbdb.comments.id <> '').select()
+    stoplist = list(delZhStr)
+    stoplist.extend(stopwords)
+    p_wordclouds = []
+    b_wordclouds = []
+    g_wordclouds = []
+    b_comment_count = 0
+    g_comment_count = 0
+    female_wordclouds=[]
+    male_wordclouds=[]
+    female_comment_count = 0
+    male_comment_count = 0
+
+    for row in rows:
+
+        userid=row['from_id']
+        from_team = row['from_team']
+        segments= list(set(row['segment']))
+        p_wordclouds2 = [i for i in segments if i not in stoplist]
+        p_wordclouds.extend(p_wordclouds2)
+        prow = fbdb(fbdb.people.uid == userid).select().first()
+
+        if prow:
+            if prow['gender'] == 'male':
+                male_wordclouds2 = [i for i in segments if i not in stoplist]
+                male_wordclouds.extend(male_wordclouds2)
+                male_comment_count+=1
+            elif prow['gender'] == 'female':
+                female_wordclouds2 = [i for i in segments if i not in stoplist]
+                female_wordclouds.extend(female_wordclouds2)
+                female_comment_count+=1
+            else:
+                pass
+
+        if from_team =='柯文哲':
+            g_wordclouds2 = [i for i in segments if i not in stoplist]
+            g_wordclouds.extend(g_wordclouds2)
+            g_comment_count+=1
+        else:
+            b_wordclouds2 = [i for i in segments if i not in stoplist]
+            b_wordclouds.extend(b_wordclouds2)
+            b_comment_count+=1
+
+    comment_count = len(rows)
+
+    p_wordcloud = []
+    b_wordcloud = []
+    g_wordcloud = []
+    male_wordcloud = []
+    female_wordcloud = []
+
+    for item in Counter(p_wordclouds).most_common(1000):
+        p_wordcloud.append({'count': item[1] , 'value': item[0]})
+    for item in Counter(b_wordclouds).most_common(500):
+        b_wordcloud.append({'count': item[1] , 'value': item[0]})
+    for item in Counter(g_wordclouds).most_common(500):
+        g_wordcloud.append({'count': item[1] , 'value': item[0]})
+    for item in Counter(male_wordclouds).most_common(500):
+        male_wordcloud.append({'count': item[1] , 'value': item[0]})
+    for item in Counter(female_wordclouds).most_common(500):
+        female_wordcloud.append({'count': item[1] , 'value': item[0]})
+
+    fbdb.wordcloud.insert(comment_count=comment_count, wordclouds=p_wordcloud, b_wordclouds = b_wordcloud, g_wordclouds=g_wordcloud, female_wordclouds=female_wordcloud, male_wordclouds=male_wordcloud, b_comment_count=b_comment_count, g_comment_count=g_comment_count, updated_time = datetime.datetime.now(), male_comment_count=male_comment_count, female_comment_count=female_comment_count)
+    fbdb.commit()
+    #return "ok"
+
+def user_wordcloud(userid):
+    rows = fbdb(fbdb.comments.from_id == userid).select()
+    comment_count = len(rows)
+    stoplist = list(delZhStr)
+    stoplist.extend(stopwords)
+    p_wordclouds = []
+    b_wordclouds = []
+    g_wordclouds = []
+    b_comment_count = 0
+    g_comment_count = 0
+    for row in rows:
+        from_team = row['from_team']
+        segments= list(set(row['segment']))
+        p_wordclouds2 = [i for i in segments if i not in stoplist]
+        p_wordclouds.extend(p_wordclouds2)
+        if from_team =='柯文哲':
+            g_wordclouds2 = [i for i in segments if i not in stoplist]
+            g_wordclouds.extend(g_wordclouds2)
+            g_comment_count+=1
+        else:
+            b_wordclouds2 = [i for i in segments if i not in stoplist]
+            b_wordclouds.extend(b_wordclouds2)
+            b_comment_count+=1
+    comment_count = len(rows)
+    p_wordcloud = []
+    b_wordcloud = []
+    g_wordcloud = []
+    for item in Counter(p_wordclouds).most_common():
+        p_wordcloud.append({'count': item[1] , 'value': item[0]})
+    for item in Counter(b_wordclouds).most_common():
+        b_wordcloud.append({'count': item[1] , 'value': item[0]})
+    for item in Counter(g_wordclouds).most_common():
+        g_wordcloud.append({'count': item[1] , 'value': item[0]})
+
+    prow = fbdb(fbdb.people.uid == userid).select().first()
+    if prow:
+        fbdb.people.update_or_insert(fbdb.people.uid == userid, comment_count=comment_count, wordcloud=p_wordcloud, b_wordclouds = b_wordcloud, g_wordclouds=g_wordcloud, b_comment_count=b_comment_count, g_comment_count=g_comment_count, updated_time = datetime.datetime.now())
+        fbdb.commit()
+    else:
+        raise
+    return "ok"
+
+def sharedPosts():
+    graph = getGraph()
+    rows= fbdb(fbdb.post.fid <> '').select()
+    try:
+        for row in rows:
+            from_team = row['team']
+            from_page = row['from_id']
+            from_post = row['fid']
+            if row['ptype'] != 'photo':
+                post_id = row['fid'].split('_')[1]
+            else:
+                post_id = row['link'].split('/')[-2]
+                #few(post_id)
+            try:
+                post_data=graph.request(post_id + '/sharedposts', args={'fields':'likes.limit(1).summary(1),comments.limit(1).summary(1),message,from,id,created_time, shares','limit':1000})
+                posts = post_data['data']
+                time.sleep(1.3)
+                for post in posts:
+                    created_time = datetime.datetime.strptime(post["created_time"],'%Y-%m-%dT%H:%M:%S+0000') if ('created_time' in post) else ''
+                    message = post["message"] if ('message' in post) else ''
+                    segment = list(jieba.cut(message))
+                    cid = post["id"] if ('id' in post) else ''
+                    picture = post["picture"]["data"]["url"] if ('picture' in post) else ''
+                    picture = post["picture"]["data"]["url"] if ('picture' in post) else ''
+                    from_id = post["from"]["id"] if ('from' in post) else ''
+                    link = post["link"]
+                    person = fbdb(fbdb.people.uid == from_id).select()
+                    if not person:
+                        getPeople(from_id)
+                        time.sleep(1.3)
+                    person = fbdb(fbdb.people.uid == from_id).select().first()
+                    if person:
+                        share_count = int(person['share_count'])+1 if person['share_count'] != None else 1
+                        share_links = person['share_links'].append(link)
+                        if from_team =='柯文哲':
+                            g_share_count == int(person['g_share_count'])+1 if person['g_share_count'] != None else 1
+                            g_share_links = person['g_share_links'].append(link)
+                        else :
+                            b_share_count == int(person['b_share_count'])+1 if person['b_share_count'] != None else 1
+
+                        fbdb.people.update_or_insert(fbdb.people.uid == from_id, share_count=share_count)
+                    else:
+                        getPage(from_id)
+                        time.sleep(1.3)
+                    from_name = post["from"]["name"] if ('from' in post) else ''
+                    likes = {}
+                    likes = post["likes"]["data"] if ('likes' in post) else {}
+                    comments = {}
+                    comments = post["comments"]["data"] if ('comments' in post) else {}
+                    like_count = post["like_count"] if ('like_count' in post) else ''
+                    comment_count = post["comment_count"] if ('comment_count' in post) else ''
+                    parent = post["parent"] if ('parent' in post) else {"id" : row['fid']}
+                    share_count=0
+                    share_count = post["shares"]["count"] if ('shares' in post) else 0
+                    row1 = fbdb(fbdb.comments.fid==cid).select().first()
+                    if row1:
+                        row1.update_record(from_id=from_id, from_name=from_name, message=message, created_time=created_time, picture=picture, likes=likes,  comments=comments, like_count=like_count, comment_count=comment_count,share_count=share_count, from_post=from_post, from_page=from_page, from_team=from_team, parent=parent, segment=segment )
+                    else:
+                        fbdb.comments.insert(fid=cid, from_id=from_id, from_name=from_name, message=message, created_time=created_time, picture=picture, likes=likes,  comments=comments, like_count=like_count, comment_count=comment_count, share_count=share_count, from_post=from_post, from_page=from_page, from_team=from_team, parent=parent, segment=segment )
+                        fbdb.commit()
+                    for comm in comments:
+                        try:
+                            cid = comm['id']
+                            post=graph.request(cid, args={'fields':'likes.limit(1000),comments.limit(1000),message,from,id,like_count,created_time,parent,comment_count'})
+                            time.sleep(1.3)
+                            created_time = datetime.datetime.strptime(post["created_time"],'%Y-%m-%dT%H:%M:%S+0000') if ('created_time' in post) else ''
+                            message = post["message"] if ('message' in post) else ''
+                            segment = list(jieba.cut(message))
+                            cid = post["id"] if ('id' in post) else ''
+                            picture = post["picture"]["data"]["url"] if ('picture' in post) else ''
+                            from_id = post["from"]["id"] if ('from' in post) else ''
+                            person = fbdb(fbdb.people.uid == from_id).select()
+                            if not person:
+                                getPeople(from_id)
+                                time.sleep(1.3)
+                            from_name = post["from"]["name"] if ('from' in post) else ''
+                            likes = {}
+                            likes = post["likes"]['data'] if ('likes' in post) else {}
+                            comments = {}
+                            comments = post["comments"]['data'] if ('comments' in post) else {}
+                            like_count = post["like_count"] if ('like_count' in post) else ''
+                            comment_count = post["comment_count"] if ('comment_count' in post) else ''
+                            parent = post["parent"] if ('parent' in post) else ''
+                            #share_count = post["share_count"]if ('share_count' in post) else ''
+                            row2 = fbdb(fbdb.comments.fid==cid).select().first()
+                            if row2:
+                                row2.update_record(from_id=from_id, from_name=from_name, message=message, created_time=created_time, picture=picture, likes=likes,  comments=comments, like_count=like_count, comment_count=comment_count, from_post=from_post, from_page=from_page, from_team=from_team, parent=parent, segment=segment )
+                            else:
+                                fbdb.comments.insert(fid=cid, from_id=from_id, from_name=from_name, message=message, created_time=created_time, picture=picture, likes=likes,  comments=comments, like_count=like_count, comment_count=comment_count, from_post=from_post, from_page=from_page, from_team=from_team, parent=parent, segment=segment )
+                                fbdb.commit()
+                        except GraphAPIError, e:
+                            raise
+                            message=e.result
+                            fbdb.graphAPI_Error.insert(oid=from_post,date_time=datetime.datetime.today(),error_msg=message)
+                            fbdb.commit()
+            except GraphAPIError, e:
+                raise
+                message=e.result
+                fbdb.graphAPI_Error.insert(oid=from_post,date_time=datetime.datetime.today(),error_msg=message)
+                fbdb.commit()
+    except GraphAPIError, e:
+        raise
+        message=e.result
+        fbdb.graphAPI_Error.insert(oid=from_post,date_time=datetime.datetime.today(),error_msg=message)
+        fbdb.commit()
+    return "ok"
+
+
+@auth.requires_login()
+def getPeople(userid):
+    try:
+        graph = getGraph()
+        posts_data=graph.request(userid, args={'fields':'id,first_name,last_name,locale,gender,link,location,name,updated_time,age_range,hometown,education,timezone,work,picture'})
+        delay()
+        post = {}
+        post = posts_data
+    except GraphAPIError, e:
+        message=e.result
+        #fbdb.graphAPI_Error.insert(oid=userid,date_time=datetime.datetime.today(),error_msg=message)
+        #fbdb.commit()
+        code =message['error']['code']
+        if code ==100:
+            try:
+                posts_data=graph.request(userid, args={'fields':'id,name,category,picture,link,website'})
+                delay()
+                post = {}
+                post = posts_data
+                uid = post["id"]
+                name  = post["name"] if ('name' in post) else ''
+                category  = post["category"] if ('category' in post) else ''
+                picture = post["picture"]["data"]["url"] if ('picture' in post) else ''
+                link = post["link"] if ('link' in post) else ''
+                website = post["website"] if ('website' in post) else ''
+                gender = None
+                fbdb.people.insert(uid=uid, name=name, category=category, link=link, picture=picture, website=website)
+                fbdb.commit()
+                return "add page id"
+
+            except:
+                #raise
+                fbdb.people.insert(uid=userid, name="unavailable user")
+                message=  "Unexpected error:", sys.exc_info()[0]
+                fbdb.graphAPI_Error.insert(oid=userid,date_time=datetime.datetime.today(),error_msg=message)
+                fbdb.commit()
+                return "unavailable user"
+        
+    except:
+        #raise
+        message=  "Unexpected error:", sys.exc_info()[0]
+        fbdb.graphAPI_Error.insert(oid=userid,date_time=datetime.datetime.today(),error_msg=message)
+        fbdb.commit()
+        return "unknown error"
+
+    uid = post["id"]
+    first_name =  post["first_name"] if ('first_name' in post) else ''
+    last_name = post["last_name"] if ('last_name' in post) else ''
+    locale  = post["locale"]if ('locale' in post) else ''
+    gender  = post["gender"]if ('gender' in post) else ''
+    religion  = post["religion"]if ('religion' in post) else ''
+    location  = post["location"]if ('location' in post) else ''
+    name  = post["name"] if ('name' in post) else ''
+    website  = post["website"]if ('website' in post) else ''
+    relationship_status   = post["relationship_status"]if ('relationship_status' in post) else ''
+    updated_time = datetime.datetime.strptime(post["updated_time"],'%Y-%m-%dT%H:%M:%S+0000') if ('updated_time' in post) else ''
+    age_range  = post["age_range"]if ('age_range' in post) else ''
+    hometown  = post["hometown"]if ('hometown' in post) else ''
+    education  = post["education"]if ('education' in post) else ''
+    timezone  = post["timezone"]if ('timezone' in post) else ''
+    work  = post["work"]if ('work' in post) else ''
+    email  = post["email"]if ('email' in post) else ''
+    link = post["link"] if ('link' in post) else ''
+    picture = post["picture"]["data"]["url"] if ('picture' in post) else ''
+    fbdb.people.update_or_insert(fbdb.people.uid==uid, uid=uid, first_name=first_name, last_name=last_name, locale=locale, gender=gender, religion=religion, location=location, name=name, website=website, relationship_status=relationship_status, updated_time=updated_time, age_range=age_range, hometown=hometown, education=education, timezone=timezone, work=work, email=email, link=link, picture=picture)
+    fbdb.commit()
+    message = "all posts finished"
+    return dict(message=message)
+
+def delay():
+    time.sleep(1.5)

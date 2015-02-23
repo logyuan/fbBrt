@@ -1,0 +1,115 @@
+/**** Base styles ****/
+
+html, body, div, span {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  font-size: 100%;
+  font: inherit;
+  vertical-align: baseline;
+}
+
+
+body { 
+  font: 13px 'Helvetica Neue', Arial, sans-serif;
+  background: #eeeeee;
+  color: #222;
+  line-height: 1.4em;
+}
+
+h1
+{
+font-size:32px;
+}
+
+a {
+  color: #000;
+  text-decoration: none;
+  font-weight: bold;
+}
+
+a:hover {
+  color: #D26;
+}
+
+
+/**** #site-nav ****/
+
+
+
+/**** Content ****/
+
+#footer
+{
+border-top:solid 1px #aaaaaa;
+padding-top:20px;
+margin-bottom:40px;
+color:#000000;
+}
+
+#content {
+width:1050px;
+margin:0 auto;
+}
+
+#title
+{
+text-align:center;
+padding-bottom:20px;
+margin-bottom:20px;
+border-bottom:solid 2px #000000;
+}
+
+
+ul, ol { padding-left: 1.3em;}
+
+.hidden { display: none; }
+
+
+/**** Demos ****/
+
+#container {
+  background: #eeeeee;
+  margin-bottom: 20px;
+  clear: both;
+
+}
+
+.centered { margin: 0 auto; }
+
+.box {
+  margin: 5px;
+  padding:0 10px 10px 10px;
+  background: #fff;
+  font-size: 11px;
+  line-height: 1.4em;
+  float: left;
+}
+
+.box h2 {
+  font-size: 14px;
+  font-weight: 200;
+}
+
+/*Vary the width of box by changing col index number */
+
+.col1 { width: 80px; }
+.col2 { width: 180px; }
+.col3 { width: 280px; }
+.col4 { width: 380px; }
+.col5 { width: 480px; }
+
+.col1 img { max-width: 80px; }
+.col2 img { max-width: 180px; }
+.col3 img { max-width: 280px; }
+.col4 img { max-width: 380px; }
+.col5 img { max-width: 480px; }
+
+
+/* CSS value */
+code .nd { color: #9FAD7E; } /* CSS pseudo selector */
+
+/**** Clearfix ****/
+.clearfix:before, .clearfix:after { content: ""; display: table; }
+.clearfix:after { clear: both; }
+.clearfix { zoom: 1; }

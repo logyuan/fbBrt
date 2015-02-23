@@ -1,0 +1,26 @@
+{
+    "name":"flare",
+    "children":[
+        {
+            "name":"male_wordcloud",
+            "children":[
+                {
+                    "name":"adj",
+                    "children":[]
+                },
+                {
+                    "name":"v",
+                    "children":[]
+                },
+                {
+                    "name":"nr",
+                    "children":[]
+                },
+                {
+                    "name":"n",
+                    "children":[]
+                }
+            ]
+        }
+    ]
+}

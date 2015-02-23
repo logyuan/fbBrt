@@ -1,0 +1,44 @@
+<link href="{{=URL('static', 'css/style.css')}}" rel="stylesheet" type="text/css" />
+<script src="{{=URL('static', 'js/jquery.masonry.min.js')}}" /></script>
+<script src="{{=URL('static', 'js/jquery-1.7.1.min.js')}}" type="text/javascript"/></script>
+<script>
+  $(function(){
+    
+    $('#container').masonry({
+      itemSelector: '.box'
+    });
+
+  });
+</script>
+<script>
+  $(function(){
+
+    var $container = $('#container');
+  
+    $container.imagesLoaded( function(){
+      $container.masonry({
+        itemSelector : '.box'
+      });
+    });
+  
+  });
+</script>
+{{extend 'layout.html'}}
+<div id="container" class="clearfix">
+{{for post in allposts:}}
+    <div class="box col3">
+        <p></p>
+        <p><h3>Score: {{=post.likes_sincelastupdate}}  </h3></p>
+        
+        
+        <p><h2><img  src="{{ =fbpl(fbpl.place.placeid==post.from_id).select(fbpl.place.picture).first()["picture"]}}" height=50 width=50 > <a href="{{=post.link}}">{{=post.from_name}}</a> </h2></p>
+        <p>  {{=post.created_time}}</p>
+        <p><hr></hr></p>
+        <p><img src="{{=post.picture}}" align=top style="float:right;margin:15px;"> {{=post.message}}</p>
+        <p><hr></hr></p>
+        <p>likes:"{{=post.likes_count}}"</p>
+        <p>comments_since_lastupdate: {{=post.comment_sincelastupdate}}   comments:"{{=post.comment_count}}"</p>
+        <p>shares_since_lastupdate: {{=post.shares_sincelastupdate}}  share:"{{=post.shares_count}}"</p>
+    </div>
+{{pass}}
+</div>

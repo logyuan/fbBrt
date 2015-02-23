@@ -1,0 +1,1399 @@
+{{response.files.append(URL(r=request,c='static',f='/js/d3.js'))}}
+
+{{extend 'layout.html'}}
+
+
+<script>
+
+var margin = {top: 20, right: 20, bottom: 30, left: 50},
+    width = 1280 - margin.left - margin.right,
+    height = 500 - margin.top - margin.bottom;
+
+var parseDate = d3.time.format("%Y%m%d").parse;
+
+var x = d3.time.scale()
+    .range([0, width]);
+
+var y = d3.scale.linear()
+    .range([height, 0]);
+
+var xAxis = d3.svg.axis()
+    .scale(x)
+    .orient("bottom");
+
+var yAxis = d3.svg.axis()
+    .scale(y)
+    .orient("left");
+
+var line = d3.svg.area()
+    .interpolate("basis")
+    .x(function(d) { return x(d.date); })
+    .y(function(d) { return y(d["kowj"]); });
+
+var area = d3.svg.area()
+    .interpolate("basis")
+    .x(function(d) { return x(d.date); })
+    .y1(function(d) { return y(d["kowj"]); });
+
+var svg = d3.select("body").append("svg")
+    .attr("width", width + margin.left + margin.right)
+    .attr("height", height + margin.top + margin.bottom)
+  .append("g")
+    .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+
+    d3.tsv("http://localhost:8088/fsr/static/daily_people_tw.tsv", function(error, data) {
+  data.forEach(function(d) {
+    d.date = parseDate(d.date);
+    d["kowj"]= +d["kowj"];
+    d["lien"] = +d["lien"];
+  });
+
+  x.domain(d3.extent(data, function(d) { return d.date; }));
+
+  y.domain([
+    d3.min(data, function(d) { return Math.min(d["kowj"], d["lien"]); }),
+    d3.max(data, function(d) { return Math.max(d["kowj"], d["lien"]); })
+  ]);
+
+  svg.datum(data);
+
+  svg.append("clipPath")
+      .attr("id", "clip-below")
+    .append("path")
+      .attr("d", area.y0(height));
+
+  svg.append("clipPath")
+      .attr("id", "clip-above")
+    .append("path")
+      .attr("d", area.y0(0));
+
+  svg.append("path")
+      .attr("class", "area above")
+      .attr("clip-path", "url(#clip-above)")
+      .attr("d", area.y0(function(d) { return y(d["lien"]); }));
+
+  svg.append("path")
+      .attr("class", "area below")
+      .attr("clip-path", "url(#clip-below)")
+      .attr("d", area);
+
+  svg.append("path")
+      .attr("class", "line")
+      .attr("d", line);
+
+  svg.append("g")
+      .attr("class", "x axis")
+      .attr("transform", "translate(0," + height + ")")
+      .call(xAxis);
+
+  svg.append("g")
+      .attr("class", "y axis")
+      .call(yAxis)
+    .append("text")
+      .attr("transform", "rotate(-90)")
+      .attr("y", 6)
+      .attr("dy", ".71em")
+      .style("text-anchor", "end")
+      .text("daily_people_tw");
+});
+
+var svg1 = d3.select("body").append("svg")
+    .attr("width", width + margin.left + margin.right)
+    .attr("height", height + margin.top + margin.bottom)
+  .append("g")
+    .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+
+    d3.tsv("http://localhost:8088/fsr/static/daily_discuss_tw.tsv", function(error, data) {
+  data.forEach(function(d) {
+    d.date = parseDate(d.date);
+    d["kowj"]= +d["kowj"];
+    d["lien"] = +d["lien"];
+  });
+
+  x.domain(d3.extent(data, function(d) { return d.date; }));
+
+  y.domain([
+    d3.min(data, function(d) { return Math.min(d["kowj"], d["lien"]); }),
+    d3.max(data, function(d) { return Math.max(d["kowj"], d["lien"]); })
+  ]);
+
+  svg1.datum(data);
+
+  svg1.append("clipPath")
+      .attr("id", "clip-below")
+    .append("path")
+      .attr("d", area.y0(height));
+
+  svg1.append("clipPath")
+      .attr("id", "clip-above")
+    .append("path")
+      .attr("d", area.y0(0));
+
+  svg1.append("path")
+      .attr("class", "area above")
+      .attr("clip-path", "url(#clip-above)")
+      .attr("d", area.y0(function(d) { return y(d["lien"]); }));
+
+  svg1.append("path")
+      .attr("class", "area below")
+      .attr("clip-path", "url(#clip-below)")
+      .attr("d", area);
+
+  svg1.append("path")
+      .attr("class", "line")
+      .attr("d", line);
+
+  svg1.append("g")
+      .attr("class", "x axis")
+      .attr("transform", "translate(0," + height + ")")
+      .call(xAxis);
+
+  svg1.append("g")
+      .attr("class", "y axis")
+      .call(yAxis)
+    .append("text")
+      .attr("transform", "rotate(-90)")
+      .attr("y", 6)
+      .attr("dy", ".71em")
+      .style("text-anchor", "end")
+      .text("daily_discuss_tw");
+});
+    
+var svg2 = d3.select("body").append("svg")
+    .attr("width", width + margin.left + margin.right)
+    .attr("height", height + margin.top + margin.bottom)
+  .append("g")
+    .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+
+    d3.tsv("http://localhost:8088/fsr/static/daily_newfan_tw.tsv", function(error, data) {
+  data.forEach(function(d) {
+    d.date = parseDate(d.date);
+    d["kowj"]= +d["kowj"];
+    d["lien"] = +d["lien"];
+  });
+
+  x.domain(d3.extent(data, function(d) { return d.date; }));
+
+  y.domain([
+    d3.min(data, function(d) { return Math.min(d["kowj"], d["lien"]); }),
+    d3.max(data, function(d) { return Math.max(d["kowj"], d["lien"]); })
+  ]);
+
+  svg2.datum(data);
+
+  svg2.append("clipPath")
+      .attr("id", "clip-below")
+    .append("path")
+      .attr("d", area.y0(height));
+
+  svg2.append("clipPath")
+      .attr("id", "clip-above")
+    .append("path")
+      .attr("d", area.y0(0));
+
+  svg2.append("path")
+      .attr("class", "area above")
+      .attr("clip-path", "url(#clip-above)")
+      .attr("d", area.y0(function(d) { return y(d["lien"]); }));
+
+  svg2.append("path")
+      .attr("class", "area below")
+      .attr("clip-path", "url(#clip-below)")
+      .attr("d", area);
+
+  svg2.append("path")
+      .attr("class", "line")
+      .attr("d", line);
+
+  svg2.append("g")
+      .attr("class", "x axis")
+      .attr("transform", "translate(0," + height + ")")
+      .call(xAxis);
+
+  svg2.append("g")
+      .attr("class", "y axis")
+      .call(yAxis)
+    .append("text")
+      .attr("transform", "rotate(-90)")
+      .attr("y", 6)
+      .attr("dy", ".71em")
+      .style("text-anchor", "end")
+      .text("daily_newfan_tw");
+})    
+
+    
+var svg3 = d3.select("body").append("svg")
+    .attr("width", width + margin.left + margin.right)
+    .attr("height", height + margin.top + margin.bottom)
+  .append("g")
+    .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+
+    d3.tsv("http://localhost:8088/fsr/static/daily_shares_count.tsv", function(error, data) {
+  data.forEach(function(d) {
+    d.date = parseDate(d.date);
+    d["kowj"]= +d["kowj"];
+    d["lien"] = +d["lien"];
+  });
+
+  x.domain(d3.extent(data, function(d) { return d.date; }));
+
+  y.domain([
+    d3.min(data, function(d) { return Math.min(d["kowj"], d["lien"]); }),
+    d3.max(data, function(d) { return Math.max(d["kowj"], d["lien"]); })
+  ]);
+
+  svg3.datum(data);
+
+  svg3.append("clipPath")
+      .attr("id", "clip-below")
+    .append("path")
+      .attr("d", area.y0(height));
+
+  svg3.append("clipPath")
+      .attr("id", "clip-above")
+    .append("path")
+      .attr("d", area.y0(0));
+
+  svg3.append("path")
+      .attr("class", "area above")
+      .attr("clip-path", "url(#clip-above)")
+      .attr("d", area.y0(function(d) { return y(d["lien"]); }));
+
+  svg3.append("path")
+      .attr("class", "area below")
+      .attr("clip-path", "url(#clip-below)")
+      .attr("d", area);
+
+  svg3.append("path")
+      .attr("class", "line")
+      .attr("d", line);
+
+  svg3.append("g")
+      .attr("class", "x axis")
+      .attr("transform", "translate(0," + height + ")")
+      .call(xAxis);
+
+  svg3.append("g")
+      .attr("class", "y axis")
+      .call(yAxis)
+    .append("text")
+      .attr("transform", "rotate(-90)")
+      .attr("y", 6)
+      .attr("dy", ".71em")
+      .style("text-anchor", "end")
+      .text("daily_shares_count");
+})     
+    
+var svg4 = d3.select("body").append("svg")
+    .attr("width", width + margin.left + margin.right)
+    .attr("height", height + margin.top + margin.bottom)
+  .append("g")
+    .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+
+    d3.tsv("http://localhost:8088/fsr/static/daily_likes_count.tsv", function(error, data) {
+  data.forEach(function(d) {
+    d.date = parseDate(d.date);
+    d["kowj"]= +d["kowj"];
+    d["lien"] = +d["lien"];
+  });
+
+  x.domain(d3.extent(data, function(d) { return d.date; }));
+
+  y.domain([
+    d3.min(data, function(d) { return Math.min(d["kowj"], d["lien"]); }),
+    d3.max(data, function(d) { return Math.max(d["kowj"], d["lien"]); })
+  ]);
+
+  svg4.datum(data);
+
+  svg4.append("clipPath")
+      .attr("id", "clip-below")
+    .append("path")
+      .attr("d", area.y0(height));
+
+  svg4.append("clipPath")
+      .attr("id", "clip-above")
+    .append("path")
+      .attr("d", area.y0(0));
+
+  svg4.append("path")
+      .attr("class", "area above")
+      .attr("clip-path", "url(#clip-above)")
+      .attr("d", area.y0(function(d) { return y(d["lien"]); }));
+
+  svg4.append("path")
+      .attr("class", "area below")
+      .attr("clip-path", "url(#clip-below)")
+      .attr("d", area);
+
+  svg4.append("path")
+      .attr("class", "line")
+      .attr("d", line);
+
+  svg4.append("g")
+      .attr("class", "x axis")
+      .attr("transform", "translate(0," + height + ")")
+      .call(xAxis);
+
+  svg4.append("g")
+      .attr("class", "y axis")
+      .call(yAxis)
+    .append("text")
+      .attr("transform", "rotate(-90)")
+      .attr("y", 6)
+      .attr("dy", ".71em")
+      .style("text-anchor", "end")
+      .text("daily_Post_likes_count");
+
+})         
+    
+    
+var svg5 = d3.select("body").append("svg")
+    .attr("width", width + margin.left + margin.right)
+    .attr("height", height + margin.top + margin.bottom)
+  .append("g")
+    .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+
+    d3.tsv("http://localhost:8088/fsr/static/daily_comment_count.tsv", function(error, data) {
+  data.forEach(function(d) {
+    d.date = parseDate(d.date);
+    d["kowj"]= +d["kowj"];
+    d["lien"] = +d["lien"];
+  });
+
+  x.domain(d3.extent(data, function(d) { return d.date; }));
+
+  y.domain([
+    d3.min(data, function(d) { return Math.min(d["kowj"], d["lien"]); }),
+    d3.max(data, function(d) { return Math.max(d["kowj"], d["lien"]); })
+  ]);
+
+  svg5.datum(data);
+
+  svg5.append("clipPath")
+      .attr("id", "clip-below")
+    .append("path")
+      .attr("d", area.y0(height));
+
+  svg5.append("clipPath")
+      .attr("id", "clip-above")
+    .append("path")
+      .attr("d", area.y0(0));
+
+  svg5.append("path")
+      .attr("class", "area above")
+      .attr("clip-path", "url(#clip-above)")
+      .attr("d", area.y0(function(d) { return y(d["lien"]); }));
+
+  svg5.append("path")
+      .attr("class", "area below")
+      .attr("clip-path", "url(#clip-below)")
+      .attr("d", area);
+
+  svg5.append("path")
+      .attr("class", "line")
+      .attr("d", line);
+
+  svg5.append("g")
+      .attr("class", "x axis")
+      .attr("transform", "translate(0," + height + ")")
+      .call(xAxis);
+
+  svg5.append("g")
+      .attr("class", "y axis")
+      .call(yAxis)
+    .append("text")
+      .attr("transform", "rotate(-90)")
+      .attr("y", 6)
+      .attr("dy", ".71em")
+      .style("text-anchor", "end")
+      .text("daily_comment_count");
+})         
+var svg6 = d3.select("body").append("svg")
+    .attr("width", width + margin.left + margin.right)
+    .attr("height", height + margin.top + margin.bottom)
+  .append("g")
+    .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+
+    d3.tsv("http://localhost:8088/fsr/static/weekly_newfan_tw.tsv", function(error, data) {
+  data.forEach(function(d) {
+    d.date = parseDate(d.date);
+    d["kowj"]= +d["kowj"];
+    d["lien"] = +d["lien"];
+  });
+
+  x.domain(d3.extent(data, function(d) { return d.date; }));
+
+  y.domain([
+    d3.min(data, function(d) { return Math.min(d["kowj"], d["lien"]); }),
+    d3.max(data, function(d) { return Math.max(d["kowj"], d["lien"]); })
+  ]);
+
+  svg6.datum(data);
+
+  svg6.append("clipPath")
+      .attr("id", "clip-below")
+    .append("path")
+      .attr("d", area.y0(height));
+
+  svg6.append("clipPath")
+      .attr("id", "clip-above")
+    .append("path")
+      .attr("d", area.y0(0));
+
+  svg6.append("path")
+      .attr("class", "area above")
+      .attr("clip-path", "url(#clip-above)")
+      .attr("d", area.y0(function(d) { return y(d["lien"]); }));
+
+  svg6.append("path")
+      .attr("class", "area below")
+      .attr("clip-path", "url(#clip-below)")
+      .attr("d", area);
+
+  svg6.append("path")
+      .attr("class", "line")
+      .attr("d", line);
+
+  svg6.append("g")
+      .attr("class", "x axis")
+      .attr("transform", "translate(0," + height + ")")
+      .call(xAxis);
+
+  svg6.append("g")
+      .attr("class", "y axis")
+      .call(yAxis)
+    .append("text")
+      .attr("transform", "rotate(-90)")
+      .attr("y", 6)
+      .attr("dy", ".71em")
+      .style("text-anchor", "end")
+      .text("weekly_newfan_tw");        
+        
+})         
+
+var svg7 = d3.select("body").append("svg")
+    .attr("width", width + margin.left + margin.right)
+    .attr("height", height + margin.top + margin.bottom)
+  .append("g")
+    .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+
+    d3.tsv("http://localhost:8088/fsr/static/weekly_people_tw.tsv", function(error, data) {
+  data.forEach(function(d) {
+    d.date = parseDate(d.date);
+    d["kowj"]= +d["kowj"];
+    d["lien"] = +d["lien"];
+  });
+
+  x.domain(d3.extent(data, function(d) { return d.date; }));
+
+  y.domain([
+    d3.min(data, function(d) { return Math.min(d["kowj"], d["lien"]); }),
+    d3.max(data, function(d) { return Math.max(d["kowj"], d["lien"]); })
+  ]);
+
+  svg7.datum(data);
+
+  svg7.append("clipPath")
+      .attr("id", "clip-below")
+    .append("path")
+      .attr("d", area.y0(height));
+
+  svg7.append("clipPath")
+      .attr("id", "clip-above")
+    .append("path")
+      .attr("d", area.y0(0));
+
+  svg7.append("path")
+      .attr("class", "area above")
+      .attr("clip-path", "url(#clip-above)")
+      .attr("d", area.y0(function(d) { return y(d["lien"]); }));
+
+  svg7.append("path")
+      .attr("class", "area below")
+      .attr("clip-path", "url(#clip-below)")
+      .attr("d", area);
+
+  svg7.append("path")
+      .attr("class", "line")
+      .attr("d", line);
+
+  svg7.append("g")
+      .attr("class", "x axis")
+      .attr("transform", "translate(0," + height + ")")
+      .call(xAxis);
+
+  svg7.append("g")
+      .attr("class", "y axis")
+      .call(yAxis)
+    .append("text")
+      .attr("transform", "rotate(-90)")
+      .attr("y", 6)
+      .attr("dy", ".71em")
+      .style("text-anchor", "end")
+      .text("weekly_people_tw");        
+        
+})
+    
+    
+var svg8 = d3.select("body").append("svg")
+    .attr("width", width + margin.left + margin.right)
+    .attr("height", height + margin.top + margin.bottom)
+  .append("g")
+    .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+
+    d3.tsv("http://localhost:8088/fsr/static/weekly_discuss_tw.tsv", function(error, data) {
+  data.forEach(function(d) {
+    d.date = parseDate(d.date);
+    d["kowj"]= +d["kowj"];
+    d["lien"] = +d["lien"];
+  });
+
+  x.domain(d3.extent(data, function(d) { return d.date; }));
+
+  y.domain([
+    d3.min(data, function(d) { return Math.min(d["kowj"], d["lien"]); }),
+    d3.max(data, function(d) { return Math.max(d["kowj"], d["lien"]); })
+  ]);
+
+  svg8.datum(data);
+
+  svg8.append("clipPath")
+      .attr("id", "clip-below")
+    .append("path")
+      .attr("d", area.y0(height));
+
+  svg8.append("clipPath")
+      .attr("id", "clip-above")
+    .append("path")
+      .attr("d", area.y0(0));
+
+  svg8.append("path")
+      .attr("class", "area above")
+      .attr("clip-path", "url(#clip-above)")
+      .attr("d", area.y0(function(d) { return y(d["lien"]); }));
+
+  svg8.append("path")
+      .attr("class", "area below")
+      .attr("clip-path", "url(#clip-below)")
+      .attr("d", area);
+
+  svg8.append("path")
+      .attr("class", "line")
+      .attr("d", line);
+
+  svg8.append("g")
+      .attr("class", "x axis")
+      .attr("transform", "translate(0," + height + ")")
+      .call(xAxis);
+
+  svg8.append("g")
+      .attr("class", "y axis")
+      .call(yAxis)
+    .append("text")
+      .attr("transform", "rotate(-90)")
+      .attr("y", 6)
+      .attr("dy", ".71em")
+      .style("text-anchor", "end")
+      .text("weekly_discuss_tw");        
+        
+})    
+
+    
+var svg9 = d3.select("body").append("svg")
+    .attr("width", width + margin.left + margin.right)
+    .attr("height", height + margin.top + margin.bottom)
+  .append("g")
+    .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+
+    d3.tsv("http://localhost:8088/fsr/static/weekly_shares_count.tsv", function(error, data) {
+  data.forEach(function(d) {
+    d.date = parseDate(d.date);
+    d["kowj"]= +d["kowj"];
+    d["lien"] = +d["lien"];
+  });
+
+  x.domain(d3.extent(data, function(d) { return d.date; }));
+
+  y.domain([
+    d3.min(data, function(d) { return Math.min(d["kowj"], d["lien"]); }),
+    d3.max(data, function(d) { return Math.max(d["kowj"], d["lien"]); })
+  ]);
+
+  svg9.datum(data);
+
+  svg9.append("clipPath")
+      .attr("id", "clip-below")
+    .append("path")
+      .attr("d", area.y0(height));
+
+  svg9.append("clipPath")
+      .attr("id", "clip-above")
+    .append("path")
+      .attr("d", area.y0(0));
+
+  svg9.append("path")
+      .attr("class", "area above")
+      .attr("clip-path", "url(#clip-above)")
+      .attr("d", area.y0(function(d) { return y(d["lien"]); }));
+
+  svg9.append("path")
+      .attr("class", "area below")
+      .attr("clip-path", "url(#clip-below)")
+      .attr("d", area);
+
+  svg9.append("path")
+      .attr("class", "line")
+      .attr("d", line);
+
+  svg9.append("g")
+      .attr("class", "x axis")
+      .attr("transform", "translate(0," + height + ")")
+      .call(xAxis);
+
+  svg9.append("g")
+      .attr("class", "y axis")
+      .call(yAxis)
+    .append("text")
+      .attr("transform", "rotate(-90)")
+      .attr("y", 6)
+      .attr("dy", ".71em")
+      .style("text-anchor", "end")
+      .text("weekly_shares_count");        
+        
+})       
+    
+var svg10 = d3.select("body").append("svg")
+    .attr("width", width + margin.left + margin.right)
+    .attr("height", height + margin.top + margin.bottom)
+  .append("g")
+    .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+
+    d3.tsv("http://localhost:8088/fsr/static/weekly_likes_count.tsv", function(error, data) {
+  data.forEach(function(d) {
+    d.date = parseDate(d.date);
+    d["kowj"]= +d["kowj"];
+    d["lien"] = +d["lien"];
+  });
+
+  x.domain(d3.extent(data, function(d) { return d.date; }));
+
+  y.domain([
+    d3.min(data, function(d) { return Math.min(d["kowj"], d["lien"]); }),
+    d3.max(data, function(d) { return Math.max(d["kowj"], d["lien"]); })
+  ]);
+
+  svg10.datum(data);
+
+  svg10.append("clipPath")
+      .attr("id", "clip-below")
+    .append("path")
+      .attr("d", area.y0(height));
+
+  svg10.append("clipPath")
+      .attr("id", "clip-above")
+    .append("path")
+      .attr("d", area.y0(0));
+
+  svg10.append("path")
+      .attr("class", "area above")
+      .attr("clip-path", "url(#clip-above)")
+      .attr("d", area.y0(function(d) { return y(d["lien"]); }));
+
+  svg10.append("path")
+      .attr("class", "area below")
+      .attr("clip-path", "url(#clip-below)")
+      .attr("d", area);
+
+  svg10.append("path")
+      .attr("class", "line")
+      .attr("d", line);
+
+  svg10.append("g")
+      .attr("class", "x axis")
+      .attr("transform", "translate(0," + height + ")")
+      .call(xAxis);
+
+  svg10.append("g")
+      .attr("class", "y axis")
+      .call(yAxis)
+    .append("text")
+      .attr("transform", "rotate(-90)")
+      .attr("y", 6)
+      .attr("dy", ".71em")
+      .style("text-anchor", "end")
+      .text("weekly_likes_count");        
+        
+})    
+    
+var svg11 = d3.select("body").append("svg")
+    .attr("width", width + margin.left + margin.right)
+    .attr("height", height + margin.top + margin.bottom)
+  .append("g")
+    .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+
+    d3.tsv("http://localhost:8088/fsr/static/weekly_comment_count.tsv", function(error, data) {
+  data.forEach(function(d) {
+    d.date = parseDate(d.date);
+    d["kowj"]= +d["kowj"];
+    d["lien"] = +d["lien"];
+  });
+
+  x.domain(d3.extent(data, function(d) { return d.date; }));
+
+  y.domain([
+    d3.min(data, function(d) { return Math.min(d["kowj"], d["lien"]); }),
+    d3.max(data, function(d) { return Math.max(d["kowj"], d["lien"]); })
+  ]);
+
+  svg11.datum(data);
+
+  svg11.append("clipPath")
+      .attr("id", "clip-below")
+    .append("path")
+      .attr("d", area.y0(height));
+
+  svg11.append("clipPath")
+      .attr("id", "clip-above")
+    .append("path")
+      .attr("d", area.y0(0));
+
+  svg11.append("path")
+      .attr("class", "area above")
+      .attr("clip-path", "url(#clip-above)")
+      .attr("d", area.y0(function(d) { return y(d["lien"]); }));
+
+  svg11.append("path")
+      .attr("class", "area below")
+      .attr("clip-path", "url(#clip-below)")
+      .attr("d", area);
+
+  svg11.append("path")
+      .attr("class", "line")
+      .attr("d", line);
+
+  svg11.append("g")
+      .attr("class", "x axis")
+      .attr("transform", "translate(0," + height + ")")
+      .call(xAxis);
+
+  svg11.append("g")
+      .attr("class", "y axis")
+      .call(yAxis)
+    .append("text")
+      .attr("transform", "rotate(-90)")
+      .attr("y", 6)
+      .attr("dy", ".71em")
+      .style("text-anchor", "end")
+      .text("weekly_comment_count");        
+        
+})   
+
+var svg12 = d3.select("body").append("svg")
+    .attr("width", width + margin.left + margin.right)
+    .attr("height", height + margin.top + margin.bottom)
+  .append("g")
+    .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+
+    d3.tsv("http://localhost:8088/fsr/static/biWeekly_newfan_tw.tsv", function(error, data) {
+  data.forEach(function(d) {
+    d.date = parseDate(d.date);
+    d["kowj"]= +d["kowj"];
+    d["lien"] = +d["lien"];
+  });
+
+  x.domain(d3.extent(data, function(d) { return d.date; }));
+
+  y.domain([
+    d3.min(data, function(d) { return Math.min(d["kowj"], d["lien"]); }),
+    d3.max(data, function(d) { return Math.max(d["kowj"], d["lien"]); })
+  ]);
+
+  svg12.datum(data);
+
+  svg12.append("clipPath")
+      .attr("id", "clip-below")
+    .append("path")
+      .attr("d", area.y0(height));
+
+  svg12.append("clipPath")
+      .attr("id", "clip-above")
+    .append("path")
+      .attr("d", area.y0(0));
+
+  svg12.append("path")
+      .attr("class", "area above")
+      .attr("clip-path", "url(#clip-above)")
+      .attr("d", area.y0(function(d) { return y(d["lien"]); }));
+
+  svg12.append("path")
+      .attr("class", "area below")
+      .attr("clip-path", "url(#clip-below)")
+      .attr("d", area);
+
+  svg12.append("path")
+      .attr("class", "line")
+      .attr("d", line);
+
+  svg12.append("g")
+      .attr("class", "x axis")
+      .attr("transform", "translate(0," + height + ")")
+      .call(xAxis);
+
+  svg12.append("g")
+      .attr("class", "y axis")
+      .call(yAxis)
+    .append("text")
+      .attr("transform", "rotate(-90)")
+      .attr("y", 6)
+      .attr("dy", ".71em")
+      .style("text-anchor", "end")
+      .text("biWeekly_newfan_tw");        
+        
+})       
+
+
+var svg13 = d3.select("body").append("svg")
+    .attr("width", width + margin.left + margin.right)
+    .attr("height", height + margin.top + margin.bottom)
+  .append("g")
+    .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+
+    d3.tsv("http://localhost:8088/fsr/static/biWeekly_comment_count.tsv", function(error, data) {
+  data.forEach(function(d) {
+    d.date = parseDate(d.date);
+    d["kowj"]= +d["kowj"];
+    d["lien"] = +d["lien"];
+  });
+
+  x.domain(d3.extent(data, function(d) { return d.date; }));
+
+  y.domain([
+    d3.min(data, function(d) { return Math.min(d["kowj"], d["lien"]); }),
+    d3.max(data, function(d) { return Math.max(d["kowj"], d["lien"]); })
+  ]);
+
+  svg13.datum(data);
+
+  svg13.append("clipPath")
+      .attr("id", "clip-below")
+    .append("path")
+      .attr("d", area.y0(height));
+
+  svg13.append("clipPath")
+      .attr("id", "clip-above")
+    .append("path")
+      .attr("d", area.y0(0));
+
+  svg13.append("path")
+      .attr("class", "area above")
+      .attr("clip-path", "url(#clip-above)")
+      .attr("d", area.y0(function(d) { return y(d["lien"]); }));
+
+  svg13.append("path")
+      .attr("class", "area below")
+      .attr("clip-path", "url(#clip-below)")
+      .attr("d", area);
+
+  svg13.append("path")
+      .attr("class", "line")
+      .attr("d", line);
+
+  svg13.append("g")
+      .attr("class", "x axis")
+      .attr("transform", "translate(0," + height + ")")
+      .call(xAxis);
+
+  svg13.append("g")
+      .attr("class", "y axis")
+      .call(yAxis)
+    .append("text")
+      .attr("transform", "rotate(-90)")
+      .attr("y", 6)
+      .attr("dy", ".71em")
+      .style("text-anchor", "end")
+      .text("biWeekly_comment_count");        
+        
+})
+    
+
+var svg14 = d3.select("body").append("svg")
+    .attr("width", width + margin.left + margin.right)
+    .attr("height", height + margin.top + margin.bottom)
+  .append("g")
+    .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+
+    d3.tsv("http://localhost:8088/fsr/static/biWeekly_shares_count.tsv", function(error, data) {
+  data.forEach(function(d) {
+    d.date = parseDate(d.date);
+    d["kowj"]= +d["kowj"];
+    d["lien"] = +d["lien"];
+  });
+
+  x.domain(d3.extent(data, function(d) { return d.date; }));
+
+  y.domain([
+    d3.min(data, function(d) { return Math.min(d["kowj"], d["lien"]); }),
+    d3.max(data, function(d) { return Math.max(d["kowj"], d["lien"]); })
+  ]);
+
+  svg14.datum(data);
+
+  svg14.append("clipPath")
+      .attr("id", "clip-below")
+    .append("path")
+      .attr("d", area.y0(height));
+
+  svg14.append("clipPath")
+      .attr("id", "clip-above")
+    .append("path")
+      .attr("d", area.y0(0));
+
+  svg14.append("path")
+      .attr("class", "area above")
+      .attr("clip-path", "url(#clip-above)")
+      .attr("d", area.y0(function(d) { return y(d["lien"]); }));
+
+  svg14.append("path")
+      .attr("class", "area below")
+      .attr("clip-path", "url(#clip-below)")
+      .attr("d", area);
+
+  svg14.append("path")
+      .attr("class", "line")
+      .attr("d", line);
+
+  svg14.append("g")
+      .attr("class", "x axis")
+      .attr("transform", "translate(0," + height + ")")
+      .call(xAxis);
+
+  svg14.append("g")
+      .attr("class", "y axis")
+      .call(yAxis)
+    .append("text")
+      .attr("transform", "rotate(-90)")
+      .attr("y", 6)
+      .attr("dy", ".71em")
+      .style("text-anchor", "end")
+      .text("biWeekly_shares_count");        
+        
+})     
+    
+
+var svg20 = d3.select("body").append("svg")
+    .attr("width", width + margin.left + margin.right)
+    .attr("height", height + margin.top + margin.bottom)
+  .append("g")
+    .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+
+    d3.tsv("http://localhost:8088/fsr/static/biWeekly_likes_count.tsv", function(error, data) {
+  data.forEach(function(d) {
+    d.date = parseDate(d.date);
+    d["kowj"]= +d["kowj"];
+    d["lien"] = +d["lien"];
+  });
+
+  x.domain(d3.extent(data, function(d) { return d.date; }));
+
+  y.domain([
+    d3.min(data, function(d) { return Math.min(d["kowj"], d["lien"]); }),
+    d3.max(data, function(d) { return Math.max(d["kowj"], d["lien"]); })
+  ]);
+
+  svg20.datum(data);
+
+  svg20.append("clipPath")
+      .attr("id", "clip-below")
+    .append("path")
+      .attr("d", area.y0(height));
+
+  svg20.append("clipPath")
+      .attr("id", "clip-above")
+    .append("path")
+      .attr("d", area.y0(0));
+
+  svg20.append("path")
+      .attr("class", "area above")
+      .attr("clip-path", "url(#clip-above)")
+      .attr("d", area.y0(function(d) { return y(d["lien"]); }));
+
+  svg20.append("path")
+      .attr("class", "area below")
+      .attr("clip-path", "url(#clip-below)")
+      .attr("d", area);
+
+  svg20.append("path")
+      .attr("class", "line")
+      .attr("d", line);
+
+  svg20.append("g")
+      .attr("class", "x axis")
+      .attr("transform", "translate(0," + height + ")")
+      .call(xAxis);
+
+  svg20.append("g")
+      .attr("class", "y axis")
+      .call(yAxis)
+    .append("text")
+      .attr("transform", "rotate(-90)")
+      .attr("y", 6)
+      .attr("dy", ".71em")
+      .style("text-anchor", "end")
+      .text("biWeekly_likes_count");        
+        
+})         
+    
+
+var svg15 = d3.select("body").append("svg")
+    .attr("width", width + margin.left + margin.right)
+    .attr("height", height + margin.top + margin.bottom)
+  .append("g")
+    .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+
+    d3.tsv("http://localhost:8088/fsr/static/days28_people_tw.tsv", function(error, data) {
+  data.forEach(function(d) {
+    d.date = parseDate(d.date);
+    d["kowj"]= +d["kowj"];
+    d["lien"] = +d["lien"];
+  });
+
+  x.domain(d3.extent(data, function(d) { return d.date; }));
+
+  y.domain([
+    d3.min(data, function(d) { return Math.min(d["kowj"], d["lien"]); }),
+    d3.max(data, function(d) { return Math.max(d["kowj"], d["lien"]); })
+  ]);
+
+  svg15.datum(data);
+
+  svg15.append("clipPath")
+      .attr("id", "clip-below")
+    .append("path")
+      .attr("d", area.y0(height));
+
+  svg15.append("clipPath")
+      .attr("id", "clip-above")
+    .append("path")
+      .attr("d", area.y0(0));
+
+  svg15.append("path")
+      .attr("class", "area above")
+      .attr("clip-path", "url(#clip-above)")
+      .attr("d", area.y0(function(d) { return y(d["lien"]); }));
+
+  svg15.append("path")
+      .attr("class", "area below")
+      .attr("clip-path", "url(#clip-below)")
+      .attr("d", area);
+
+  svg15.append("path")
+      .attr("class", "line")
+      .attr("d", line);
+
+  svg15.append("g")
+      .attr("class", "x axis")
+      .attr("transform", "translate(0," + height + ")")
+      .call(xAxis);
+
+  svg15.append("g")
+      .attr("class", "y axis")
+      .call(yAxis)
+    .append("text")
+      .attr("transform", "rotate(-90)")
+      .attr("y", 6)
+      .attr("dy", ".71em")
+      .style("text-anchor", "end")
+      .text("days28_people_tw");        
+        
+})    
+    
+
+var svg16 = d3.select("body").append("svg")
+    .attr("width", width + margin.left + margin.right)
+    .attr("height", height + margin.top + margin.bottom)
+  .append("g")
+    .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+
+    d3.tsv("http://localhost:8088/fsr/static/days28_newfan_tw.tsv", function(error, data) {
+  data.forEach(function(d) {
+    d.date = parseDate(d.date);
+    d["kowj"]= +d["kowj"];
+    d["lien"] = +d["lien"];
+  });
+
+  x.domain(d3.extent(data, function(d) { return d.date; }));
+
+  y.domain([
+    d3.min(data, function(d) { return Math.min(d["kowj"], d["lien"]); }),
+    d3.max(data, function(d) { return Math.max(d["kowj"], d["lien"]); })
+  ]);
+
+  svg16.datum(data);
+
+  svg16.append("clipPath")
+      .attr("id", "clip-below")
+    .append("path")
+      .attr("d", area.y0(height));
+
+  svg16.append("clipPath")
+      .attr("id", "clip-above")
+    .append("path")
+      .attr("d", area.y0(0));
+
+  svg16.append("path")
+      .attr("class", "area above")
+      .attr("clip-path", "url(#clip-above)")
+      .attr("d", area.y0(function(d) { return y(d["lien"]); }));
+
+  svg16.append("path")
+      .attr("class", "area below")
+      .attr("clip-path", "url(#clip-below)")
+      .attr("d", area);
+
+  svg16.append("path")
+      .attr("class", "line")
+      .attr("d", line);
+
+  svg16.append("g")
+      .attr("class", "x axis")
+      .attr("transform", "translate(0," + height + ")")
+      .call(xAxis);
+
+  svg16.append("g")
+      .attr("class", "y axis")
+      .call(yAxis)
+    .append("text")
+      .attr("transform", "rotate(-90)")
+      .attr("y", 6)
+      .attr("dy", ".71em")
+      .style("text-anchor", "end")
+      .text("days28_newfan_tw");        
+        
+})        
+    
+var svg17 = d3.select("body").append("svg")
+    .attr("width", width + margin.left + margin.right)
+    .attr("height", height + margin.top + margin.bottom)
+  .append("g")
+    .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+
+    d3.tsv("http://localhost:8088/fsr/static/days28_likes_count.tsv", function(error, data) {
+  data.forEach(function(d) {
+    d.date = parseDate(d.date);
+    d["kowj"]= +d["kowj"];
+    d["lien"] = +d["lien"];
+  });
+
+  x.domain(d3.extent(data, function(d) { return d.date; }));
+
+  y.domain([
+    d3.min(data, function(d) { return Math.min(d["kowj"], d["lien"]); }),
+    d3.max(data, function(d) { return Math.max(d["kowj"], d["lien"]); })
+  ]);
+
+  svg17.datum(data);
+
+  svg17.append("clipPath")
+      .attr("id", "clip-below")
+    .append("path")
+      .attr("d", area.y0(height));
+
+  svg17.append("clipPath")
+      .attr("id", "clip-above")
+    .append("path")
+      .attr("d", area.y0(0));
+
+  svg17.append("path")
+      .attr("class", "area above")
+      .attr("clip-path", "url(#clip-above)")
+      .attr("d", area.y0(function(d) { return y(d["lien"]); }));
+
+  svg17.append("path")
+      .attr("class", "area below")
+      .attr("clip-path", "url(#clip-below)")
+      .attr("d", area);
+
+  svg17.append("path")
+      .attr("class", "line")
+      .attr("d", line);
+
+  svg17.append("g")
+      .attr("class", "x axis")
+      .attr("transform", "translate(0," + height + ")")
+      .call(xAxis);
+
+  svg17.append("g")
+      .attr("class", "y axis")
+      .call(yAxis)
+    .append("text")
+      .attr("transform", "rotate(-90)")
+      .attr("y", 6)
+      .attr("dy", ".71em")
+      .style("text-anchor", "end")
+      .text("days28_likes_count");        
+        
+})    
+    
+var svg18 = d3.select("body").append("svg")
+    .attr("width", width + margin.left + margin.right)
+    .attr("height", height + margin.top + margin.bottom)
+  .append("g")
+    .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+
+    d3.tsv("http://localhost:8088/fsr/static/days28_comment_count.tsv", function(error, data) {
+  data.forEach(function(d) {
+    d.date = parseDate(d.date);
+    d["kowj"]= +d["kowj"];
+    d["lien"] = +d["lien"];
+  });
+
+  x.domain(d3.extent(data, function(d) { return d.date; }));
+
+  y.domain([
+    d3.min(data, function(d) { return Math.min(d["kowj"], d["lien"]); }),
+    d3.max(data, function(d) { return Math.max(d["kowj"], d["lien"]); })
+  ]);
+
+  svg18.datum(data);
+
+  svg18.append("clipPath")
+      .attr("id", "clip-below")
+    .append("path")
+      .attr("d", area.y0(height));
+
+  svg18.append("clipPath")
+      .attr("id", "clip-above")
+    .append("path")
+      .attr("d", area.y0(0));
+
+  svg18.append("path")
+      .attr("class", "area above")
+      .attr("clip-path", "url(#clip-above)")
+      .attr("d", area.y0(function(d) { return y(d["lien"]); }));
+
+  svg18.append("path")
+      .attr("class", "area below")
+      .attr("clip-path", "url(#clip-below)")
+      .attr("d", area);
+
+  svg18.append("path")
+      .attr("class", "line")
+      .attr("d", line);
+
+  svg18.append("g")
+      .attr("class", "x axis")
+      .attr("transform", "translate(0," + height + ")")
+      .call(xAxis);
+
+  svg18.append("g")
+      .attr("class", "y axis")
+      .call(yAxis)
+    .append("text")
+      .attr("transform", "rotate(-90)")
+      .attr("y", 6)
+      .attr("dy", ".71em")
+      .style("text-anchor", "end")
+      .text("days28_comment_count");        
+        
+})      
+
+    
+    
+var svg19 = d3.select("body").append("svg")
+    .attr("width", width + margin.left + margin.right)
+    .attr("height", height + margin.top + margin.bottom)
+  .append("g")
+    .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+
+    d3.tsv("http://localhost:8088/fsr/static/days28_people_global.tsv", function(error, data) {
+  data.forEach(function(d) {
+    d.date = parseDate(d.date);
+    d["kowj"]= +d["kowj"];
+    d["lien"] = +d["lien"];
+  });
+
+  x.domain(d3.extent(data, function(d) { return d.date; }));
+
+  y.domain([
+    d3.min(data, function(d) { return Math.min(d["kowj"], d["lien"]); }),
+    d3.max(data, function(d) { return Math.max(d["kowj"], d["lien"]); })
+  ]);
+
+  svg19.datum(data);
+
+  svg19.append("clipPath")
+      .attr("id", "clip-below")
+    .append("path")
+      .attr("d", area.y0(height));
+
+  svg19.append("clipPath")
+      .attr("id", "clip-above")
+    .append("path")
+      .attr("d", area.y0(0));
+
+  svg19.append("path")
+      .attr("class", "area above")
+      .attr("clip-path", "url(#clip-above)")
+      .attr("d", area.y0(function(d) { return y(d["lien"]); }));
+
+  svg19.append("path")
+      .attr("class", "area below")
+      .attr("clip-path", "url(#clip-below)")
+      .attr("d", area);
+
+  svg19.append("path")
+      .attr("class", "line")
+      .attr("d", line);
+
+  svg19.append("g")
+      .attr("class", "x axis")
+      .attr("transform", "translate(0," + height + ")")
+      .call(xAxis);
+
+  svg19.append("g")
+      .attr("class", "y axis")
+      .call(yAxis)
+    .append("text")
+      .attr("transform", "rotate(-90)")
+      .attr("y", 6)
+      .attr("dy", ".71em")
+      .style("text-anchor", "end")
+      .text("days28_people_global");        
+        
+})          
+    
+</script>
+
+<style>
+
+body {
+  font: 10px sans-serif;
+}
+
+.axis path,
+.axis line {
+  fill: none;
+  stroke: #000;
+  shape-rendering: crispEdges;
+}
+
+.x.axis path {
+  display: none;
+}
+
+.area.above {
+  fill: rgb(80,141,200);
+}
+
+.area.below {
+  fill: rgb(145,207,96);
+}
+
+.line {
+  fill: none;
+  stroke: #000;
+  stroke-width: 1.5px;
+}
+
+</style>
