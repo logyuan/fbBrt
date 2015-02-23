@@ -21,16 +21,14 @@ from operator import itemgetter
 import codecs
 import os
 
-<<<<<<< HEAD
 #pos_train = os.path.join(request.folder,'private','dictionary','pos.txt')
 #nag_train = os.path.join(request.folder,'private','dictionary','nag.txt')
 #sentiment.train(pos_train, nag_train)
 
 #sentiment.save(os.path.join(request.folder,'private','sentiment.marshal'))
-=======
 # sentiment.train('/usr/local/lib/python2.7/site-packages/snownlp/sentiment/blue.txt', '/usr/local/lib/python2.7/site-packages/snownlp/sentiment/green.txt')
 #sentiment.save('/usr/local/lib/python2.7/site-packages/snownlp/sentiment/sentiment.marshal')
->>>>>>> FETCH_HEAD
+
 
 dictionary_path = os.path.join(request.folder,'private','dictionary','dict.txt.big.txt')
 userdict_path = os.path.join(request.folder,'private','dictionary','userdict.txt')
@@ -59,19 +57,9 @@ def index():
     Brtnews7days_url = "https://www.kimonolabs.com/api/ajldjyxq?apikey=22879e6cd7538eea6e95b90aa70afccc"
     Brtnews30days_url = "https://www.kimonolabs.com/api/5xnus1ws?apikey=22879e6cd7538eea6e95b90aa70afccc"
     Brtnews1year_url = "https://www.kimonolabs.com/api/d1shcaww?apikey=22879e6cd7538eea6e95b90aa70afccc"
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
     kimono_api(Brtnews7days_url, "BRT")
-=======
-    kimono_api(Brtnews1year_url, "BRT")
->>>>>>> FETCH_HEAD
-=======
-    kimono_api(Brtnews1year_url, "BRT")
->>>>>>> FETCH_HEAD
-=======
-    kimono_api(Brtnews1year_url, "BRT")
->>>>>>> FETCH_HEAD
+    
+
     mayor24_url = "https://www.kimonolabs.com/api/7br3eu62?apikey=22879e6cd7538eea6e95b90aa70afccc"
     mayor7days_url = "https://www.kimonolabs.com/api/863lok12?apikey=22879e6cd7538eea6e95b90aa70afccc"
     mayor30days_url = "https://www.kimonolabs.com/api/8h259vhq?apikey=22879e6cd7538eea6e95b90aa70afccc"
@@ -90,10 +78,7 @@ def index():
 
     return "OK"
 
-<<<<<<< HEAD
-=======
 
->>>>>>> FETCH_HEAD
 def commentsByKeywords():
     key = '%女性%'
     rows = fbdb(fbdb.news.summary.like(key)).select()
@@ -135,8 +120,7 @@ def fix_url():
         row.update_record(news_fid=news_fid)
 
 @auth.requires_login()
-<<<<<<< HEAD
-=======
+
 def get_og_url(url):
     graph = getGraph()
     url = url + urllib.quote('?fields=og_object{id,url,created_time,updated_time},share,id')
@@ -156,8 +140,6 @@ def get_og_url(url):
     og = {"fid": fid, "fb_url": fb_url, "comment_count": comment_count, "share_count": share_count, "created_time":created_time, "updated_time":updated_time }
     return og
 
-
->>>>>>> FETCH_HEAD
 def test2():
     rows = fbdb(fbdb.news.id <> '').select()
     test=[]
@@ -175,11 +157,7 @@ def fix_seg():
         segment = list(jieba.cut(message))
         row.update_record(segment=segment)
 
-<<<<<<< HEAD
-=======
 
-
->>>>>>> FETCH_HEAD
 def kimono_api(url, from_team):
     response = urllib.urlopen(url)
     data = json.load(response)
@@ -253,27 +231,7 @@ def kimono_api(url, from_team):
                 updated_time = og["updated_time"]
                 share_count = og["share_count"]
                 comment_count = og["comment_count"]
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-
-                fbdb.news.insert(fid=fid, fb_url=fb_url, href=href, date_time=date_time, created_time=created_time, updated_time=updated_time, source=source, summary=summary,
-=======
-                created_time = og["created_time"]
-                updated_time = og["updated_time"]
-                fbdb.news.insert(fid=fid, fb_url=fb_url, href=href, created_time=created_time,updated_time=updated_time, date_time=date_time, source=source, summary=summary,
->>>>>>> FETCH_HEAD
-=======
-                created_time = og["created_time"]
-                updated_time = og["updated_time"]
-                fbdb.news.insert(fid=fid, fb_url=fb_url, href=href, created_time=created_time,updated_time=updated_time, date_time=date_time, source=source, summary=summary,
->>>>>>> FETCH_HEAD
-=======
-                created_time = og["created_time"]
-                updated_time = og["updated_time"]
-                fbdb.news.insert(fid=fid, fb_url=fb_url, href=href, created_time=created_time,updated_time=updated_time, date_time=date_time, source=source, summary=summary,
->>>>>>> FETCH_HEAD
-                                 title=title, photo=photo, related_news=json.dumps(related_news),
+                fbdb.news.insert(fid=fid, fb_url=fb_url, href=href, created_time=created_time,updated_time=updated_time, date_time=date_time, source=source, summary=summary, title=title, photo=photo, related_news=json.dumps(related_news),
                                  related_news_date_time=related_news_date_time,
                                  related_news_source=json.dumps(related_news_source), from_team=from_team,
                                  share_count=share_count, comment_count=comment_count)
