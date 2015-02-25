@@ -57,7 +57,7 @@ def index():
     Brtnews7days_url = "https://www.kimonolabs.com/api/ajldjyxq?apikey=22879e6cd7538eea6e95b90aa70afccc"
     Brtnews30days_url = "https://www.kimonolabs.com/api/5xnus1ws?apikey=22879e6cd7538eea6e95b90aa70afccc"
     Brtnews1year_url = "https://www.kimonolabs.com/api/d1shcaww?apikey=22879e6cd7538eea6e95b90aa70afccc"
-    kimono_api(Brtnews7days_url, "BRT")
+    kimono_api(Brtnews1year_url, "BRT")
     
 
     mayor24_url = "https://www.kimonolabs.com/api/7br3eu62?apikey=22879e6cd7538eea6e95b90aa70afccc"
@@ -70,11 +70,24 @@ def index():
     date = today - timedelta(days=3)
     fromdate = datetime.datetime.strftime(date, "%Y/%m/%d")
     todate = datetime.datetime.strftime(today, "%Y/%m/%d")
-    checkDBNewsComments()
+    #checkDBNewsComments()
     #checkDBNewsCommentsFromDate(fromdate)
+    ended_time = datetime.datetime.now()
+    fbdb.event_logs.insert(function='kimono_api', started_time=started_time, ended_time=ended_time)
+    fbdb.commit()
+    started_time = datetime.datetime.now()
+    Socialcount()
+    ended_time = datetime.datetime.now()
+    fbdb.event_logs.insert(function='updateSocialcount', started_time=started_time, ended_time=ended_time)
+    fbdb.commit()
+    started_time = datetime.datetime.now()
+    checkDBNewsComments()
     ended_time = datetime.datetime.now()
     fbdb.event_logs.insert(function='checkDBNewsComments', started_time=started_time, ended_time=ended_time)
     fbdb.commit()
+
+
+
 
     return "OK"
 
@@ -120,32 +133,13 @@ def fix_url():
         row.update_record(news_fid=news_fid)
 
 @auth.requires_login()
-
-def get_og_url(url):
-    graph = getGraph()
-    url = url + urllib.quote('?fields=og_object{id,url,created_time,updated_time},share,id')
-    result = graph.request(url)
-    delay()
-    fid = result["og_object"]["id"] if 'og_object' in result else None
-    fb_url = result["og_object"]["url"] if 'og_object' in result else None
-    created_time = result["og_object"]["created_time"] if 'created_time' in result else None
-    updated_time = result["og_object"]["updated_time"] if 'updated_time' in result else None
-    if "share" in result:
-        comment_count = result["share"]["comment_count"] if 'comment_count' in result["share"] else None
-        share_count = result["share"]["share_count"] if 'share_count' in result["share"] else None
-    else:
-        comment_count = None
-        share_count = None
-
-    og = {"fid": fid, "fb_url": fb_url, "comment_count": comment_count, "share_count": share_count, "created_time":created_time, "updated_time":updated_time }
-    return og
-
-def test2():
+def update_socialcount():
     rows = fbdb(fbdb.news.id <> '').select()
     test=[]
     for row in rows:
         news_object = News(row.href)
         test.append(news_object.fb_url)
+        news_object.updateSocialCount()
         
 
     return test

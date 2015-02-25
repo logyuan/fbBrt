@@ -23,21 +23,21 @@ response.google_analytics_id = None
 ## this is the main application menu add/remove items as required
 #########################################################################
 
-<<<<<<< HEAD
-response.menu = [(T('BRT新聞'), False, URL('default', 'display_news'),
-                  [(T('即時新聞'), False, URL('default', 'realtime_news')),(T('本週最熱門'), False, URL('default', 'Hottest_news')),(T('歷史新聞排名'), False, URL('default', 'History_news'))]   
+response.menu = [(T(u'BRT新聞'), False, URL('default', 'display_news'),
+                  [(T(u'即時新聞'), False, URL('default', 'realtime_news')),(T(u'本週最熱門'), False, URL('default', 'Hottest_news')),(T(u'歷史新聞排名'), False, URL('default', 'History_news'))]   
                  ),
-                 (T('網友'), False, URL('default', 'display_people'), 
-                  [(T('最新回覆'), False, URL('default', 'addPeople'))]
+                 (T(u'網友'), False, URL('default', 'display_people'), 
+                  [(T(u'最新回覆'), False, URL('default', 'addPeople'))]
                  ),
                  (T('Page'), False, URL('default', 'display_page'), 
-=======
 response.menu = [(T('POI'), False, URL('default', 'display_form'), 
                   [(T('Add POI'), False, URL('default', 'addplace')),(T('display_poi'), False, URL('default', 'display_poi'))]
+                     ),(T('News'), False, URL('default', 'display_news')
+                     
                      ),(T('People'), False, URL('default', 'display_people'), 
                   [(T('Add People'), False, URL('default', 'addPeople'))]
                      ),(T('Page'), False, URL('default', 'display_page'), 
->>>>>>> FETCH_HEAD
+
                   [(T('Page Count'), False, URL('default', 'index')),(T('Add Page'), False, URL('default', 'addPage'))]
                  ),
                  (T('Post'), False, URL('default', 'display_post'), 

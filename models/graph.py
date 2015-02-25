@@ -599,7 +599,7 @@ class News:
         Comments = fbdb(fbdb.news_comments.from_id == self.fid).select().as_json()
         self.Comments = Comments
 
-    def getComments(self    ):
+    def getComments(self):
         Comments = fbdb(fbdb.news_comments.from_id == self.fid).select().as_json()
         self.Comments = Comments
 
@@ -1667,8 +1667,8 @@ def getUrlSocialCount(href):
     try:
         og = get_og_url(href)
         fid = og["fid"]
-        share_count = og["share_count"] if 'share_count' in og else 0
-        comment_count = og["comment_count"] if 'comment_count' in og else 0
+        share_count = og["share_count"]
+        comment_count = og["comment_count"]
         row = fbdb(fbdb.news.fid == fid).select().first()
         if row:
             row.update_record(share_count=share_count, comment_count=comment_count,  updated_time_utc=updated_time_utc, updated_time_tw=updated_time_tw )

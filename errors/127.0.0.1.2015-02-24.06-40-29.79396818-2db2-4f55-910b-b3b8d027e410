@@ -1,0 +1,306 @@
+(dp1
+S'output'
+p2
+S"<type 'exceptions.SyntaxError'> invalid syntax (default.py, line 37)"
+p3
+sS'layer'
+p4
+S'/Users/logadmin/Documents/web2py/Contents/Resources/applications/fbBrt/controllers/default.py'
+p5
+sS'code'
+p6
+S'# -*- coding: utf-8 -*-\n# this file is released under public domain and you can use without limitations\n\n#########################################################################\n## This is a sample controller\n## - index is the default action of any application\n## - user is required for authentication and authorization\n## - download is for downloading files uploaded in the db (does streaming)\n## - call exposes all registered services (none by default)\n#########################################################################\n\nfrom facebook import GraphAPI, GraphAPIError\nfrom geojson import Feature, Point, FeatureCollection\nimport geojson\nimport json\n\n\n\n#@auth.requires_login()\ndef index():\n    """\n    example action using the internationalization operator T and flash\n    rendered by views/default/index.html or views/generic.html\n\n    if you need a simple wiki simple replace the two lines below with:\n    return auth.wiki()\n\n    """\n    \n    \n    user = auth.user\n    if user:\n        \n        response.flash = T(\'You are %(name)s\', dict(name=user[\'first_name\']))\n        return dict(message=T(\'Hello, Facebook is telling that you are %(first_name)s %(last_name)s\', dict(first_name=user[\'first_name\'], last_name=user[\'last_name\'])))\n    response.flash = T(\'Welcome to web2py\')\n<<<<<<< HEAD\n=======\n    response.flash = T(dictionary_path)\n>>>>>>> FETCH_HEAD\n    return dict(message=T(\'Hello, please login\'))\n\n#@auth.requires_login()\n\n@auth.requires_login()\ndef display_form():\n    allplaces = SQLFORM.grid(fbdb.place,user_signature=False, create=False, deletable=True, editable=False,paginate=10, maxtextlength = 100, orderby = \'id DESC\')\n\n    return dict(allplaces=allplaces)\n\ndef display_page():\n    allpages = SQLFORM.grid(fbdb.page,user_signature=False, create=False, deletable=True, editable=False,paginate=10, maxtextlength = 100, orderby = \'id DESC\')\n\n    return dict(allpages=allpages)\n\ndef display_poi():\n    allpois = SQLFORM.grid(fbdb.place,user_signature=False, create=False, deletable=True, editable=False,paginate=10, maxtextlength = 100, orderby = \'id DESC\')\n\n    return dict(allpois=allpois)\n\ndef display_news():\n    allnews = SQLFORM.grid(fbdb.news,user_signature=False, create=False, deletable=True, editable=False,paginate=10, maxtextlength = 100, orderby = \'id DESC\')\n\n    return dict(allnews=allnews)\n\n\ndef display_people():\n    allpeople = SQLFORM.grid(fbdb.people,user_signature=False, create=False, deletable=True, editable=False,paginate=10, maxtextlength = 100, orderby = \'id DESC\')\n\n    return dict(allpeople=allpeople)\n\ndef display_post():\n    #allposts = SQLFORM.grid(fbdb.post,user_signature=False, create=False, deletable=True, editable=False,paginate=10, maxtextlength = 100, orderby = \'id DESC\')\n    allposts= fbdb().select(fbdb.post.ALL)\n    return dict(allposts=allposts)\n\ndef display_event():\n    allevents = SQLFORM.grid(fbdb.event,user_signature=False, create=False, deletable=True, editable=False,paginate=10, maxtextlength = 100, orderby = \'id DESC\')\n\n    return dict(allevents=allevents)\n\n\n@auth.requires_login()\ndef addplace():\n    form = FORM(\'Facebook place id or Name\',\n              INPUT(_name=\'fid\', requires=IS_NOT_EMPTY()),\n              INPUT(_type=\'submit\'))\n    if form.accepts(request,session):\n        placeid= request.vars[\'placeid\']\n        message = getPage(fid)\n        response.flash = str(message) #\'form accepted\'\n    elif form.errors:\n        response.flash = \'form has errors\'\n    else:\n        response.flash = \'please fill the form\'\n    return dict(form=form)\n\n@auth.requires_login()\ndef addPage():\n    form = FORM(\'Facebook page id or Name\',\n              INPUT(_name=\'fid\', requires=IS_NOT_EMPTY()),\n              INPUT(_type=\'submit\'))\n    if form.accepts(request,session):\n        gid= request.vars[\'fid\']\n        message = getPage(gid)\n        response.flash = str(message) #\'form accepted\'\n    elif form.errors:\n        response.flash = \'form has errors\'\n    else:\n        response.flash = \'please fill the form\'\n    return dict(form=form)\n\n@auth.requires_login()\ndef addpeople():\n    form = FORM(\'Facebook user id or Name\',\n              INPUT(_name=\'uid\', requires=IS_NOT_EMPTY()),\n              INPUT(_type=\'submit\'))\n    if form.accepts(request,session):\n        gid= request.vars[\'uid\']\n        message = getPeople(gid)\n        response.flash = str(message) #\'form accepted\'\n    elif form.errors:\n        response.flash = \'form has errors\'\n    else:\n        response.flash = \'please fill the form\'\n    return dict(form=form)\n\n@auth.requires_login()\ndef addpost():\n    form = FORM(\'Facebook post id\',\n              INPUT(_name=\'uid\', requires=IS_NOT_EMPTY()),\n              INPUT(_type=\'submit\'))\n    if form.accepts(request,session):\n        gid= request.vars[\'uid\']\n        message = getPost(gid)\n        response.flash = str(message) #\'form accepted\'\n    elif form.errors:\n        response.flash = \'form has errors\'\n    else:\n        response.flash = \'please fill the form\'\n    return dict(form=form)\n\n@auth.requires_login()\ndef addevent():\n    form = FORM(\'Facebook event id\',\n              INPUT(_name=\'uid\', requires=IS_NOT_EMPTY()),\n              INPUT(_type=\'submit\'))\n    if form.accepts(request,session):\n        gid= request.vars[\'uid\']\n        message = getEvent(gid)\n        response.flash = str(message) #\'form accepted\'\n    elif form.errors:\n        response.flash = \'form has errors\'\n    else:\n        response.flash = \'please fill the form\'\n    return dict(form=form)\n\n@auth.requires_login()\ndef getP(gid):\n    graph = getGraph()\n    try:\n        if gid:\n            fb_obj = graph.get_object(gid)\n            id= fb_obj["id"]\n            row = fbdb.place(placeid=id)\n            if not row:\n                name =  fb_obj["name"] if \'name\' in fb_obj else ""\n                category = fb_obj["category"] if \'category\' in fb_obj else ""\n                category_list =  fb_obj["category_list"] if \'category_list\' in fb_obj else ""\n                checkins= fb_obj["checkins"] if \'checkins\' in fb_obj else ""\n                if \'location\' in fb_obj:\n                    zipcode= fb_obj["location"]["zip"] if ("zip" in fb_obj["location"]) else ""\n                    latitude= fb_obj["location"]["latitude"] if ("latitude" in fb_obj["location"]) else ""\n                    longitude= fb_obj["location"]["longitude"] if ("longitude" in fb_obj["location"])  else ""\n                link= fb_obj["link"]\n                old_ids = \'\'\n                fbdb.place.insert(placeid=id,name = name,latitude=latitude,longitude=longitude,category=category,category_list=category_list,zipcode=zipcode,link=link,old_ids=old_ids)\n\n            fbdb.commit()\n            message=\'Successfully adding new place into the database\'\n        else:\n            message=\'failure, please check your placeid!\'\n    except GraphAPIError, e:\n        message=e.result\n        fbdb.graphAPI_Error.insert(placeid=gid,date_time=datetime.datetime.today(),error_msg=message)\n        fbdb.commit()\n    except :\n        raise\n        message = "unknown error"\n\n    return dict(message=message)\n\n\n\n\n\n@auth.requires_login()\ndef getEvent(eid):\n    graph = getGraph()\n    event= graph.get_object(eid)\n    eventid = event["id"] if \'id\' in event else \'\'\n    row = fbdb.event(eventid=eventid)\n    try:\n        if not row:\n            description = event["description"] if \'description\' in event else \'\'\n            end_time  = event["end_time"] if \'end_time\' in event else \'\'\n            timezone = event["timezone"] if \'timezone\' in event else \'\'\n            name = event["name"] if \'name\' in event else \'\'\n            location = event["location"] if \'location\' in event else \'\'\n            ownerid = event["owner"]["id"] if \'owner\' in event else \'\'\n            ownername = event["owner"]["name"] if \'owner\' in event else \'\'\n            picture = event["picture"] if \'picture\' in event else \'\'\n            privacy = event["privacy"] if \'privacy\' in event else \'\'\n            start_time = event["start_time"] if \'start_time\' in event else \'\'\n            ticket_uri = event["ticket_uri"] if \'ticket_uri\' in event else \'\'\n            updated_time = event["updated_time"] if \'updated_time\' in event else \'\'\n            is_date_only  = event["is_date_only"] if \'is_date_only\' in event else \'\'\n            if \'venue\' in event:\n                venueid  = event["venue"]["id"] if \'id\' in event["venue"] else \'\'\n                venuename = event["venue"]["name"] if \'name\' in event["venue"] else \'\'\n                country = event["venue"]["country"] if \'country\' in event["venue"] else \'\'\n                city = event["venue"]["city"] if \'city\' in event["venue"] else \'\'\n                state  = event["venue"]["state"] if \'state\' in event["venue"] else \'\'\n                street = event["venue"]["street"] if \'street\' in event["venue"] else \'\'\n                zipcode = event["venue"]["zip"] if \'zip\' in event["venue"] else \'\'\n                longitude = event["venue"]["longitude"] if \'longitude\' in event["venue"] else \'\'\n                latitude  = event["venue"]["latitude"] if \'latitude\' in event["venue"] else \'\'\n            fbdb.event.update_or_insert(eventid==eventid, eventid=eventid,description=description, end_time=end_time, timezone=timezone, name=name, location=location, ownerid=ownerid, ownername= ownername, picture=picture, privacy=privacy, start_time=start_time, ticket_uri=ticket_uri, updated_time=updated_time, is_date_only=is_date_only, venuename=venuename, venueid=venueid, country=country, city=city, state=state, street=street, zipcode=zipcode, longitude=longitude, latitude=latitude)\n            fbdb.commit()\n            message=\'Successfully adding new event into the database\'    \n        else:\n            message=\'Already have this event!!!\'       \n    except GraphAPIError, e:\n        message=e.result\n        fbdb.graphAPI_Error.insert(placeid=gid,date_time=datetime.datetime.today(),error_msg=message)\n        fbdb.commit() \n    \n    \n    return dict(message=message) \n\n@auth.requires_login()\ndef social_counts_pages():\n    from datetime import datetime ,date\n    from time import strptime\n    from dateutil.relativedelta import relativedelta\n\n    pageid = request.args(0)  or redirect(URL(\'index\'))\n    pagename = fbdb(fbdb.page.pageid== pageid).select()[0].name\n\n    #social_counts = fbdb(fbdb.social_counts.placeid== placeid).select()\n    query = fbdb.social_counts.placeid == pageid\n    #social_counts = SQLFORM.smartgrid(fbdb.social_counts,constraints = {\'social_counts\':query},user_signature=False, create=False, deletable=False, editable=False, maxtextlength = 240)\n    social_counts = SQLFORM.grid(query,fbdb.social_counts,user_signature=False, create=False, deletable=False, editable=False,paginate=240, maxtextlength = 240, orderby = \'id DESC\')\n    first_rec = fbdb(fbdb.social_counts.placeid== pageid).select(fbdb.social_counts.ALL).first().date_time\n    year = first_rec.year\n    month = first_rec.month\n    dt = datetime.now()\n    year2 = dt.year\n    month2 = dt.month\n    dtlist = []\n    while (year <= year2) :\n        if (year == year2):\n            if (month <= month2):\n                m_str = \'0\' + str(month) if month < 10 else str(month)\n                dtlist.append(str(year) + \'-\' + str(m_str))\n        else:\n            dtlist.append(str(year) + \'-\' + str(month))\n        first_rec = first_rec + relativedelta(months = 1)\n        year = first_rec.year\n        month = first_rec.month\n    return dict(social_counts=social_counts, pagename=pagename,dtlist=dtlist,pageid=pageid)\n\n@auth.requires_login()\ndef social_counts():\n    from datetime import datetime ,date\n    from time import strptime\n    from dateutil.relativedelta import relativedelta\n\n    placeid = request.args(0)  or redirect(URL(\'index\'))\n    placename = fbdb(fbdb.place.placeid== placeid).select()[0].name\n\n    #social_counts = fbdb(fbdb.social_counts.placeid== placeid).select()\n    query = fbdb.social_counts.placeid == placeid\n    #social_counts = SQLFORM.smartgrid(fbdb.social_counts,constraints = {\'social_counts\':query},user_signature=False, create=False, deletable=False, editable=False, maxtextlength = 240)\n    social_counts = SQLFORM.grid(query,fbdb.social_counts,user_signature=False, create=False, deletable=False, editable=False,paginate=240, maxtextlength = 240, orderby = \'id DESC\')\n    first_rec = fbdb(fbdb.social_counts.placeid== placeid).select(fbdb.social_counts.ALL).first().date_time\n    year = first_rec.year\n    month = first_rec.month\n    dt = datetime.now()\n    year2 = dt.year\n    month2 = dt.month\n    dtlist = []\n    while (year <= year2) :\n        if (year == year2):\n            if (month <= month2):\n                m_str = \'0\' + str(month) if month < 10 else str(month)\n                dtlist.append(str(year) + \'-\' + str(m_str))\n        else:\n            dtlist.append(str(year) + \'-\' + str(month))\n        first_rec = first_rec + relativedelta(months = 1)\n        year = first_rec.year\n        month = first_rec.month\n    latitude =  fbdb(fbdb.place.placeid== placeid).select().first().latitude\n    longitude =  fbdb(fbdb.place.placeid== placeid).select().first().longitude\n    return dict(social_counts=social_counts, placename=placename,latitude=latitude,longitude=longitude,dtlist=dtlist,placeid=placeid)\n\n@auth.requires_login()\ndef social_counts_month():\n    from datetime import datetime ,date\n    pageid = request.args(0) or redirect(URL(\'index\'))\n    pagename = fbdb(fbdb.page.pageid== pageid).select()[0].name\n    year = request.args(1).split(\'-\')[0]\n    month = request.args(1).split(\'-\')[1]\n    from_date = datetime.strptime(str(year) + \'-\'+ str(month) +\'-01 00:00:00\',\'%Y-%m-%d %H:%M:%S\')\n    month2 = int(month) +1 if int(month) < 12 else 1\n    year2 = int(year) if int(month) < 12 else int(year)+1\n    to_date = datetime.strptime(str(year2) + \'-\'+ str(month2) +\'-01 00:00:00\',\'%Y-%m-%d %H:%M:%S\')\n    pagename = fbdb(fbdb.page.pageid== pageid).select()[0].name\n    #rec = fbdb.social_counts.placeid == placeid\n    #rec1= fbdb.social_counts.date_time >= from_date\n    #rec2= fbdb.social_counts.date_time < to_date\n    #constraints = {\'social_counts\':rec & rec1 & rec2}\n    rows = fbdb((fbdb.social_counts.placeid == pageid) & (fbdb.social_counts.date_time >= from_date) & (fbdb.social_counts.date_time < to_date)).select()\n    #social_counts = SQLFORM.smartgrid(fbdb.social_counts,constraints = constraints,args=[request.args(0),request.args(1)],user_signature=False, create=False, deletable=False, editable=False,paginate=240, maxtextlength = 240, orderby = \'id DESC\')\n    return dict(pagename=pagename,date = request.args(1),rows=rows)\n\n@auth.requires_login()\ndef social_countsall_month():\n    from datetime import datetime ,date\n    year = request.args(0).split(\'-\')[0]\n    month = request.args(0).split(\'-\')[1]\n    from_date = datetime.strptime(str(year) + \'-\'+ str(month) +\'-01 00:00:00\',\'%Y-%m-%d %H:%M:%S\')\n    month2 = int(month) +1 if int(month) < 12 else 1\n    year2 = int(year) if int(month) < 12 else int(year)+1\n    to_date = datetime.strptime(str(year2) + \'-\'+ str(month2) +\'-01 00:00:00\',\'%Y-%m-%d %H:%M:%S\')\n    rows = fbdb((fbdb.social_counts.date_time >= from_date) & (fbdb.social_counts.date_time < to_date)).select()\n    #query = ( fbdb.social_counts.date_time >= from_date) & (fbdb.social_counts.date_time < to_date)\n    #social_counts = SQLFORM.grid(query,fbdb.social_counts,user_signature=False, create=False, deletable=False, editable=False,paginate=240, maxtextlength = 240, orderby = \'id DESC\')\n    return dict(date=request.args(0),rows=rows)\n\n@auth.requires_login()\ndef social_counts_all():\n    from datetime import datetime ,date\n    from time import strptime\n    from dateutil.relativedelta import relativedelta\n    first_rec = fbdb().select(fbdb.social_counts.ALL,limitby=(0, 2)).first().date_time\n    year = first_rec.year\n    month = first_rec.month\n    dt = datetime.now()\n    year2 = dt.year\n    month2 = dt.month\n    dtlist = []\n    while (year <= year2) :\n        if (year == year2):\n            if (month <= month2):\n                m_str = \'0\' + str(month) if month < 10 else str(month)\n                dtlist.append(str(year) + \'-\' + str(m_str))\n        else:\n            dtlist.append(str(year) + \'-\' + str(month))\n        first_rec = first_rec + relativedelta(months = 1)\n        year = first_rec.year\n        month = first_rec.month\n    social_counts = SQLFORM.grid(fbdb.social_counts,user_signature=False, create=False, deletable=False, editable=False,paginate=100, maxtextlength = 240, orderby = \'id DESC\')\n    return dict(social_counts=social_counts,dtlist=dtlist)\n\n\ndef user():\n    """\n    exposes:\n    http://..../[app]/default/user/login\n    http://..../[app]/default/user/logout\n    http://..../[app]/default/user/register\n    http://..../[app]/default/user/profile\n    http://..../[app]/default/user/retrieve_password\n    http://..../[app]/default/user/change_password\n    http://..../[app]/default/user/manage_users (requires membership in\n    use @auth.requires_login()\n        @auth.requires_membership(\'group name\')\n        @auth.requires_permission(\'read\',\'table name\',record_id)\n    to decorate functions that need access control\n    """\n    return dict(form=auth())\n\n@cache.action()\ndef download():\n    """\n    allows downloading of uploaded files\n    http://..../[app]/default/download/[filename]\n    """\n    return response.download(request, db)\n\n\ndef call():\n    """\n    exposes services. for example:\n    http://..../[app]/default/call/jsonrpc\n    decorate with @services.jsonrpc the functions to expose\n    supports xml, json, xmlrpc, jsonrpc, amfrpc, rss, csv\n    """\n    return service()\n\n\n@auth.requires_signature()\ndef data():\n    """\n    http://..../[app]/default/data/tables\n    http://..../[app]/default/data/create/[table]\n    http://..../[app]/default/data/read/[table]/[id]\n    http://..../[app]/default/data/update/[table]/[id]\n    http://..../[app]/default/data/delete/[table]/[id]\n    http://..../[app]/default/data/select/[table]\n    http://..../[app]/default/data/search/[table]\n    but URLs must be signed, i.e. linked with\n      A(\'table\',_href=URL(\'data/tables\',user_signature=True))\n    or with the signed load operator\n      LOAD(\'default\',\'data.load\',args=\'tables\',ajax=True,user_signature=True)\n    """\n    return dict(form=crud())\n\nresponse._vars=response._caller(index)\n'
+p7
+sS'snapshot'
+p8
+(dp9
+S'exception'
+p10
+(dp11
+S'__getslice__'
+p12
+S"<method-wrapper '__getslice__' of exceptions.SyntaxError object>"
+p13
+sS'text'
+p14
+S"'<<<<<<< HEAD\\n'"
+p15
+sS'__str__'
+p16
+S"<method-wrapper '__str__' of exceptions.SyntaxError object>"
+p17
+sS'__reduce__'
+p18
+S'<built-in method __reduce__ of exceptions.SyntaxError object>'
+p19
+sS'__dict__'
+p20
+S'{}'
+p21
+sS'__sizeof__'
+p22
+S'<built-in method __sizeof__ of exceptions.SyntaxError object>'
+p23
+sS'__init__'
+p24
+S"<method-wrapper '__init__' of exceptions.SyntaxError object>"
+p25
+sS'__setattr__'
+p26
+S"<method-wrapper '__setattr__' of exceptions.SyntaxError object>"
+p27
+sS'__reduce_ex__'
+p28
+S'<built-in method __reduce_ex__ of exceptions.SyntaxError object>'
+p29
+sS'__new__'
+p30
+S'<built-in method __new__ of type object>'
+p31
+sS'__format__'
+p32
+S'<built-in method __format__ of exceptions.SyntaxError object>'
+p33
+sS'__class__'
+p34
+S"<type 'exceptions.SyntaxError'>"
+p35
+sS'filename'
+p36
+S"'/Users/logadmin/Documents/web2py/Contents/Resources/applications/fbBrt/controllers/default.py'"
+p37
+sS'lineno'
+p38
+S'37'
+p39
+sS'msg'
+p40
+S"'invalid syntax'"
+p41
+sS'__doc__'
+p42
+S"'Invalid syntax.'"
+p43
+sS'__getitem__'
+p44
+S"<method-wrapper '__getitem__' of exceptions.SyntaxError object>"
+p45
+sS'__setstate__'
+p46
+S'<built-in method __setstate__ of exceptions.SyntaxError object>'
+p47
+sS'__getattribute__'
+p48
+S"<method-wrapper '__getattribute__' of exceptions.SyntaxError object>"
+p49
+sS'print_file_and_line'
+p50
+S'None'
+p51
+sS'args'
+p52
+S"('invalid syntax', ('/Users/logadmin/Documents/web2py/Contents/Resources/applications/fbBrt/controllers/default.py', 37, 2, '<<<<<<< HEAD\\n'))"
+p53
+sS'__subclasshook__'
+p54
+S'<built-in method __subclasshook__ of type object>'
+p55
+sS'offset'
+p56
+S'2'
+sS'__unicode__'
+p57
+S'<built-in method __unicode__ of exceptions.SyntaxError object>'
+p58
+sS'__delattr__'
+p59
+S"<method-wrapper '__delattr__' of exceptions.SyntaxError object>"
+p60
+sS'__repr__'
+p61
+S"<method-wrapper '__repr__' of exceptions.SyntaxError object>"
+p62
+sS'__hash__'
+p63
+S"<method-wrapper '__hash__' of exceptions.SyntaxError object>"
+p64
+ssS'evalue'
+p65
+S'invalid syntax (default.py, line 37)'
+p66
+sS'request'
+p67
+cgluon.html
+XML_unpickle
+p68
+(S's\xbeU\x00\x00<div><table><tr><td style="font-weight:bold;vertical-align:top;">ajax</td><td style="vertical-align:top;">:</td><td><div>False</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">application</td><td style="vertical-align:top;">:</td><td><div>fbBrt</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">args</td><td style="vertical-align:top;">:</td><td><div><table></table></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">cid</td><td style="vertical-align:top;">:</td><td><div>None</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">client</td><td style="vertical-align:top;">:</td><td><div>127.0.0.1</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">controller</td><td style="vertical-align:top;">:</td><td><div>default</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">cookies</td><td style="vertical-align:top;">:</td><td><div><table><tr><td style="font-weight:bold;vertical-align:top;">session_id_admin</td><td style="vertical-align:top;">:</td><td><div>127.0.0.1-6338e655-5c53-4ab8-8236-a4d2268210df<table><tr><td style="font-weight:bold;vertical-align:top;">comment</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">domain</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">expires</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">httponly</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">max-age</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">path</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">secure</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">version</td><td style="vertical-align:top;">:</td><td><div></div></td></tr></table></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">session_id_fbbrt</td><td style="vertical-align:top;">:</td><td><div>127.0.0.1-8cd3e489-2cc0-4a52-9ff7-9054bf7de8e0<table><tr><td style="font-weight:bold;vertical-align:top;">comment</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">domain</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">expires</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">httponly</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">max-age</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">path</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">secure</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">version</td><td style="vertical-align:top;">:</td><td><div></div></td></tr></table></div></td></tr></table></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">env</td><td style="vertical-align:top;">:</td><td><div><table><tr><td style="font-weight:bold;vertical-align:top;">HTTP_ACCEPT</td><td style="vertical-align:top;">:</td><td><div>text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">HTTP_ACCEPT_ENCODING</td><td style="vertical-align:top;">:</td><td><div>gzip, deflate</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">HTTP_ACCEPT_LANGUAGE</td><td style="vertical-align:top;">:</td><td><div>zh-tw,zh;q=0.8,en-us;q=0.5,en;q=0.3</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">HTTP_CONNECTION</td><td style="vertical-align:top;">:</td><td><div>keep-alive</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">HTTP_COOKIE</td><td style="vertical-align:top;">:</td><td><div>session_id_fbbrt=127.0.0.1-8cd3e489-2cc0-4a52-9ff7-9054bf7de8e0; session_id_admin=127.0.0.1-6338e655-5c53-4ab8-8236-a4d2268210df</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">HTTP_HOST</td><td style="vertical-align:top;">:</td><td><div>localhost:8088</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">HTTP_USER_AGENT</td><td style="vertical-align:top;">:</td><td><div>Mozilla/5.0 (Macintosh; Intel Mac OS X 10.10; rv:35.0) Gecko/20100101 Firefox/35.0</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">PATH_INFO</td><td style="vertical-align:top;">:</td><td><div>/fbBrt/</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">QUERY_STRING</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">REMOTE_ADDR</td><td style="vertical-align:top;">:</td><td><div>127.0.0.1</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">REMOTE_PORT</td><td style="vertical-align:top;">:</td><td><div>54359</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">REQUEST_METHOD</td><td style="vertical-align:top;">:</td><td><div>GET</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">SCRIPT_NAME</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">SERVER_NAME</td><td style="vertical-align:top;">:</td><td><div>logserver.logyuan.tw</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">SERVER_PORT</td><td style="vertical-align:top;">:</td><td><div>8088</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">SERVER_PROTOCOL</td><td style="vertical-align:top;">:</td><td><div>HTTP/1.1</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">SERVER_SOFTWARE</td><td style="vertical-align:top;">:</td><td><div>Rocket 1.2.6</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">app_folders</td><td style="vertical-align:top;">:</td><td><div>set([&#x27;/Users/logadmin/Documents/web2py/Contents/Resources/applications/fbBrt/&#x27;, &#x27;/Users/logadmin/Documents/web2py/Contents/Resources/applications/welcome/&#x27;, &#x27;/Users/logadmin/Documents/web2py/Contents/Resources/applications/BRT/&#x27;, &#x27;/Users/logadmin/Documents/web2py/Contents/Resources/applications/admin/&#x27;])</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">applications_parent</td><td style="vertical-align:top;">:</td><td><div>/Users/logadmin/Documents/web2py/Contents/Resources</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">cmd_args</td><td style="vertical-align:top;">:</td><td><div><table></table></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">cmd_options</td><td style="vertical-align:top;">:</td><td><div>&lt;Values at 0x1027f5758: {&#x27;verbose&#x27;: False, &#x27;ip&#x27;: &#x27;127.0.0.1&#x27;, &#x27;debuglevel&#x27;: 30, &#x27;with_scheduler&#x27;: False, &#x27;ips&#x27;: [&#x27;123.193.32.161&#x27;], &#x27;shutdown_timeout&#x27;: 5, &#x27;taskbar&#x27;: False, &#x27;with_coverage&#x27;: False, &#x27;port&#x27;: 8000, &#x27;maxthreads&#x27;: None, &#x27;softcron&#x27;: False, &#x27;server_name&#x27;: &#x27;logserver.logyuan.tw&#x27;, &#x27;bpython&#x27;: False, &#x27;nogui&#x27;: False, &#x27;pid_filename&#x27;: &#x27;httpserver.pid&#x27;, &#x27;extcron&#x27;: False, &#x27;runcron&#x27;: False, &#x27;run_system_tests&#x27;: False, &#x27;test&#x27;: None, &#x27;folder&#x27;: &#x27;/Users/logadmin/Documents/web2py/Contents/Resources&#x27;, &#x27;config&#x27;: &#x27;&#x27;, &#x27;minthreads&#x27;: None, &#x27;shell&#x27;: None, &#x27;run&#x27;: &#x27;&#x27;, &#x27;log_filename&#x27;: &#x27;httpserver.log&#x27;, &#x27;profiler_dir&#x27;: None, &#x27;args&#x27;: [&#x27;&#x27;], &#x27;socket_timeout&#x27;: 5, &#x27;ssl_ca_certificate&#x27;: None, &#x27;scheduler&#x27;: None, &#x27;interfaces&#x27;: None, &#x27;ssl_private_key&#x27;: &#x27;&#x27;, &#x27;scheduler_groups&#x27;: None, &#x27;password&#x27;: &#x27;&lt;ask&gt;&#x27;, &#x27;request_queue_size&#x27;: 5, &#x27;ssl_certificate&#x27;: &#x27;&#x27;, &#x27;cronjob&#x27;: False, &#x27;numthreads&#x27;: None, &#x27;quiet&#x27;: False, &#x27;import_models&#x27;: False, &#x27;timeout&#x27;: 10, &#x27;plain&#x27;: False, &#x27;nobanner&#x27;: False}&gt;</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">db_sessions</td><td style="vertical-align:top;">:</td><td><div>set([])</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">debugging</td><td style="vertical-align:top;">:</td><td><div>True</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">gluon_parent</td><td style="vertical-align:top;">:</td><td><div>/Users/logadmin/Documents/web2py/Contents/Resources</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">http_accept</td><td style="vertical-align:top;">:</td><td><div>text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">http_accept_encoding</td><td style="vertical-align:top;">:</td><td><div>gzip, deflate</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">http_accept_language</td><td style="vertical-align:top;">:</td><td><div>zh-tw,zh;q=0.8,en-us;q=0.5,en;q=0.3</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">http_connection</td><td style="vertical-align:top;">:</td><td><div>keep-alive</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">http_cookie</td><td style="vertical-align:top;">:</td><td><div>session_id_fbbrt=127.0.0.1-8cd3e489-2cc0-4a52-9ff7-9054bf7de8e0; session_id_admin=127.0.0.1-6338e655-5c53-4ab8-8236-a4d2268210df</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">http_host</td><td style="vertical-align:top;">:</td><td><div>localhost:8088</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">http_user_agent</td><td style="vertical-align:top;">:</td><td><div>Mozilla/5.0 (Macintosh; Intel Mac OS X 10.10; rv:35.0) Gecko/20100101 Firefox/35.0</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">is_jython</td><td style="vertical-align:top;">:</td><td><div>False</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">is_pypy</td><td style="vertical-align:top;">:</td><td><div>False</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">is_source</td><td style="vertical-align:top;">:</td><td><div>True</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">local_hosts</td><td style="vertical-align:top;">:</td><td><div><table><tr><td><div>123.193.32.161</div></td></tr><tr><td><div>123-193-32-161.dynamic.kbronet.com.tw</div></td></tr><tr><td><div>::ffff:127.0.0.1</div></td></tr><tr><td><div>::1</div></td></tr><tr><td><div>logserver.logyuan.tw</div></td></tr><tr><td><div>127.0.0.1</div></td></tr></table></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">path_info</td><td style="vertical-align:top;">:</td><td><div>/fbBrt/</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">query_string</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">remote_addr</td><td style="vertical-align:top;">:</td><td><div>127.0.0.1</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">remote_port</td><td style="vertical-align:top;">:</td><td><div>54359</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">request_method</td><td style="vertical-align:top;">:</td><td><div>GET</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">request_uri</td><td style="vertical-align:top;">:</td><td><div>/fbBrt/</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">script_name</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">server_name</td><td style="vertical-align:top;">:</td><td><div>logserver.logyuan.tw</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">server_port</td><td style="vertical-align:top;">:</td><td><div>8088</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">server_protocol</td><td style="vertical-align:top;">:</td><td><div>HTTP/1.1</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">server_software</td><td style="vertical-align:top;">:</td><td><div>Rocket 1.2.6</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">web2py_path</td><td style="vertical-align:top;">:</td><td><div>/Users/logadmin/Documents/web2py/Contents/Resources</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">web2py_version</td><td style="vertical-align:top;">:</td><td><div>2.9.5-stable+timestamp.2014.03.20.22.57.13</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">wsgi.errors</td><td style="vertical-align:top;">:</td><td><div>&lt;open file &#x27;&lt;stderr&gt;&#x27;, mode &#x27;w&#x27; at 0x10028b1e0&gt;</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">wsgi.file_wrapper</td><td style="vertical-align:top;">:</td><td><div>&lt;class wsgiref.util.FileWrapper at 0x1027a5258&gt;</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">wsgi.input</td><td style="vertical-align:top;">:</td><td><div>&lt;socket._fileobject object at 0x154d233d0&gt;</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">wsgi.multiprocess</td><td style="vertical-align:top;">:</td><td><div>False</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">wsgi.multithread</td><td style="vertical-align:top;">:</td><td><div>True</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">wsgi.run_once</td><td style="vertical-align:top;">:</td><td><div>False</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">wsgi.url_scheme</td><td style="vertical-align:top;">:</td><td><div>http</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">wsgi.version</td><td style="vertical-align:top;">:</td><td><div><table><tr><td><div>1</div></td></tr><tr><td><div>0</div></td></tr></table></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">wsgi_errors</td><td style="vertical-align:top;">:</td><td><div>&lt;open file &#x27;&lt;stderr&gt;&#x27;, mode &#x27;w&#x27; at 0x10028b1e0&gt;</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">wsgi_file_wrapper</td><td style="vertical-align:top;">:</td><td><div>&lt;class wsgiref.util.FileWrapper at 0x1027a5258&gt;</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">wsgi_input</td><td style="vertical-align:top;">:</td><td><div>&lt;socket._fileobject object at 0x154d233d0&gt;</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">wsgi_multiprocess</td><td style="vertical-align:top;">:</td><td><div>False</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">wsgi_multithread</td><td style="vertical-align:top;">:</td><td><div>True</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">wsgi_run_once</td><td style="vertical-align:top;">:</td><td><div>False</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">wsgi_url_scheme</td><td style="vertical-align:top;">:</td><td><div>http</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">wsgi_version</td><td style="vertical-align:top;">:</td><td><div><table><tr><td><div>1</div></td></tr><tr><td><div>0</div></td></tr></table></div></td></tr></table></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">extension</td><td style="vertical-align:top;">:</td><td><div>html</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">folder</td><td style="vertical-align:top;">:</td><td><div>/Users/logadmin/Documents/web2py/Contents/Resources/applications/fbBrt/</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">function</td><td style="vertical-align:top;">:</td><td><div>index</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">global_settings</td><td style="vertical-align:top;">:</td><td><div><table><tr><td style="font-weight:bold;vertical-align:top;">app_folders</td><td style="vertical-align:top;">:</td><td><div>set([&#x27;/Users/logadmin/Documents/web2py/Contents/Resources/applications/fbBrt/&#x27;, &#x27;/Users/logadmin/Documents/web2py/Contents/Resources/applications/welcome/&#x27;, &#x27;/Users/logadmin/Documents/web2py/Contents/Resources/applications/BRT/&#x27;, &#x27;/Users/logadmin/Documents/web2py/Contents/Resources/applications/admin/&#x27;])</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">applications_parent</td><td style="vertical-align:top;">:</td><td><div>/Users/logadmin/Documents/web2py/Contents/Resources</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">cmd_args</td><td style="vertical-align:top;">:</td><td><div><table></table></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">cmd_options</td><td style="vertical-align:top;">:</td><td><div>&lt;Values at 0x1027f5758: {&#x27;verbose&#x27;: False, &#x27;ip&#x27;: &#x27;127.0.0.1&#x27;, &#x27;debuglevel&#x27;: 30, &#x27;with_scheduler&#x27;: False, &#x27;ips&#x27;: [&#x27;123.193.32.161&#x27;], &#x27;shutdown_timeout&#x27;: 5, &#x27;taskbar&#x27;: False, &#x27;with_coverage&#x27;: False, &#x27;port&#x27;: 8000, &#x27;maxthreads&#x27;: None, &#x27;softcron&#x27;: False, &#x27;server_name&#x27;: &#x27;logserver.logyuan.tw&#x27;, &#x27;bpython&#x27;: False, &#x27;nogui&#x27;: False, &#x27;pid_filename&#x27;: &#x27;httpserver.pid&#x27;, &#x27;extcron&#x27;: False, &#x27;runcron&#x27;: False, &#x27;run_system_tests&#x27;: False, &#x27;test&#x27;: None, &#x27;folder&#x27;: &#x27;/Users/logadmin/Documents/web2py/Contents/Resources&#x27;, &#x27;config&#x27;: &#x27;&#x27;, &#x27;minthreads&#x27;: None, &#x27;shell&#x27;: None, &#x27;run&#x27;: &#x27;&#x27;, &#x27;log_filename&#x27;: &#x27;httpserver.log&#x27;, &#x27;profiler_dir&#x27;: None, &#x27;args&#x27;: [&#x27;&#x27;], &#x27;socket_timeout&#x27;: 5, &#x27;ssl_ca_certificate&#x27;: None, &#x27;scheduler&#x27;: None, &#x27;interfaces&#x27;: None, &#x27;ssl_private_key&#x27;: &#x27;&#x27;, &#x27;scheduler_groups&#x27;: None, &#x27;password&#x27;: &#x27;&lt;ask&gt;&#x27;, &#x27;request_queue_size&#x27;: 5, &#x27;ssl_certificate&#x27;: &#x27;&#x27;, &#x27;cronjob&#x27;: False, &#x27;numthreads&#x27;: None, &#x27;quiet&#x27;: False, &#x27;import_models&#x27;: False, &#x27;timeout&#x27;: 10, &#x27;plain&#x27;: False, &#x27;nobanner&#x27;: False}&gt;</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">db_sessions</td><td style="vertical-align:top;">:</td><td><div>set([])</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">debugging</td><td style="vertical-align:top;">:</td><td><div>True</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">gluon_parent</td><td style="vertical-align:top;">:</td><td><div>/Users/logadmin/Documents/web2py/Contents/Resources</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">is_jython</td><td style="vertical-align:top;">:</td><td><div>False</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">is_pypy</td><td style="vertical-align:top;">:</td><td><div>False</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">is_source</td><td style="vertical-align:top;">:</td><td><div>True</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">local_hosts</td><td style="vertical-align:top;">:</td><td><div><table><tr><td><div>123.193.32.161</div></td></tr><tr><td><div>123-193-32-161.dynamic.kbronet.com.tw</div></td></tr><tr><td><div>::ffff:127.0.0.1</div></td></tr><tr><td><div>::1</div></td></tr><tr><td><div>logserver.logyuan.tw</div></td></tr><tr><td><div>127.0.0.1</div></td></tr></table></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">web2py_version</td><td style="vertical-align:top;">:</td><td><div>2.9.5-stable+timestamp.2014.03.20.22.57.13</div></td></tr></table></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">is_https</td><td style="vertical-align:top;">:</td><td><div>False</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">is_local</td><td style="vertical-align:top;">:</td><td><div>True</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">is_restful</td><td style="vertical-align:top;">:</td><td><div>False</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">now</td><td style="vertical-align:top;">:</td><td><div>datetime.datetime(2015, 2, 24, 6, 40, 29, 483084)</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">raw_args</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">raw_extension</td><td style="vertical-align:top;">:</td><td><div>None</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">url</td><td style="vertical-align:top;">:</td><td><div>/fbBrt/</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">utcnow</td><td style="vertical-align:top;">:</td><td><div>datetime.datetime(2015, 2, 23, 22, 40, 29, 483096)</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">uuid</td><td style="vertical-align:top;">:</td><td><div>fbBrt/127.0.0.1.2015-02-24.06-40-29.79396818-2db2-4f55-910b-b3b8d027e410</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">wsgi</td><td style="vertical-align:top;">:</td><td><div>&lt;gluon.main.LazyWSGI object at 0x102d3f9d0&gt;</div></td></tr></table></div>'
+tRp69
+sS'frames'
+p70
+(lp71
+(dp72
+S'file'
+p73
+S'/Users/logadmin/Documents/web2py/Contents/Resources/gluon/restricted.py'
+p74
+sS'dump'
+p75
+(dp76
+S'code'
+p77
+S"'# -*- coding: utf-8 -*-\\n# this file is released ...=crud())\\n\\nresponse._vars=response._caller(index)\\n'"
+p78
+sS'layer'
+p79
+S"'/Users/logadmin/Documents/web2py/Contents/Resources/applications/fbBrt/controllers/default.py'"
+p80
+sS'global compile2'
+p81
+S'<function compile2>'
+p82
+sS'ccode'
+p83
+S'undefined'
+p84
+ssS'lnum'
+p85
+I219
+sS'lines'
+p86
+(dp87
+I214
+S"    environment['__name__'] = '__restricted__'"
+p88
+sI215
+S'    try:'
+p89
+sI216
+S'        if isinstance(code, types.CodeType):'
+p90
+sI217
+S'            ccode = code'
+p91
+sI218
+S'        else:'
+p92
+sI219
+S'            ccode = compile2(code, layer)'
+p93
+sI220
+S'        exec ccode in environment'
+p94
+sI221
+S'    except HTTP:'
+p95
+sI222
+S'        raise'
+p96
+sI223
+S'    except RestrictedError:'
+p97
+ssS'call'
+p98
+S"(code='# -*- coding: utf-8 -*-\\n# this file is released ...=crud())\\n\\nresponse._vars=response._caller(index)\\n', environment={'A': <class 'gluon.html.A'>, 'ANY_OF': <class 'gluon.validators.ANY_OF'>, 'Auth': <class 'gluon.tools.Auth'>, 'B': <class 'gluon.html.B'>, 'BEAUTIFY': <class 'gluon.html.BEAUTIFY'>, 'BODY': <class 'gluon.html.BODY'>, 'BR': <class 'gluon.html.BR'>, 'BUTTON': <class 'gluon.html.BUTTON'>, 'CAT': <class 'gluon.html.CAT'>, 'CENTER': <class 'gluon.html.CENTER'>, ...}, layer='/Users/logadmin/Documents/web2py/Contents/Resources/applications/fbBrt/controllers/default.py')"
+p99
+sS'func'
+p100
+S'restricted'
+p101
+sa(dp102
+g73
+S'/Users/logadmin/Documents/web2py/Contents/Resources/gluon/restricted.py'
+p103
+sg75
+(dp104
+S'builtincompile'
+p105
+S'<built-in function compile>'
+p106
+sS'code'
+p107
+S"'# -*- coding: utf-8 -*-\\n# this file is released ...=crud())\\n\\nresponse._vars=response._caller(index)\\n'"
+p108
+sS'code.rstrip'
+p109
+S'<built-in method rstrip of str object>'
+p110
+sS').replace'
+p111
+g84
+sS'layer'
+p112
+S"'/Users/logadmin/Documents/web2py/Contents/Resources/applications/fbBrt/controllers/default.py'"
+p113
+ssg85
+I202
+sg86
+(dp114
+I197
+S''
+sI198
+S'def compile2(code, layer):'
+p115
+sI199
+S'    """'
+p116
+sI200
+S"    The +'\\n' is necessary else compile fails when code ends in a comment."
+p117
+sI201
+S'    """'
+p118
+sI202
+S"    return compile(code.rstrip().replace('\\r\\n', '\\n') + '\\n', layer, 'exec')"
+p119
+sI203
+S''
+sI204
+S''
+sI205
+S"def restricted(code, environment=None, layer='Unknown'):"
+p120
+sI206
+S'    """'
+p121
+ssg98
+S"(code='# -*- coding: utf-8 -*-\\n# this file is released ...=crud())\\n\\nresponse._vars=response._caller(index)\\n', layer='/Users/logadmin/Documents/web2py/Contents/Resources/applications/fbBrt/controllers/default.py')"
+p122
+sg100
+S'compile2'
+p123
+sasS'pyver'
+p124
+S'Python 2.7.5: /Library/Frameworks/Python.framework/Versions/2.7/Resources/Python.app/Contents/MacOS/Python (prefix: /Library/Frameworks/Python.framework/Versions/2.7)'
+p125
+sS'session'
+p126
+g68
+(S's\x98\x00\x00\x00<div><table><tr><td style="font-weight:bold;vertical-align:top;">flash</td><td style="vertical-align:top;">:</td><td><div></div></td></tr></table></div>'
+tRp127
+sS'etype'
+p128
+S"<type 'exceptions.SyntaxError'>"
+p129
+sS'date'
+p130
+S'Tue Feb 24 06:40:36 2015'
+p131
+sS'response'
+p132
+g68
+(S's\xbf#\x00\x00<div><table><tr><td style="font-weight:bold;vertical-align:top;">body</td><td style="vertical-align:top;">:</td><td><div>&lt;cStringIO.StringO object at 0x158e60538&gt;</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">cookies</td><td style="vertical-align:top;">:</td><td><div><table><tr><td style="font-weight:bold;vertical-align:top;">session_id_fbbrt</td><td style="vertical-align:top;">:</td><td><div>127.0.0.1-8cd3e489-2cc0-4a52-9ff7-9054bf7de8e0<table><tr><td style="font-weight:bold;vertical-align:top;">comment</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">domain</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">expires</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">httponly</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">max-age</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">path</td><td style="vertical-align:top;">:</td><td><div>/</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">secure</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">version</td><td style="vertical-align:top;">:</td><td><div></div></td></tr></table></div></td></tr></table></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">delimiters</td><td style="vertical-align:top;">:</td><td><div><table><tr><td><div>{{</div></td></tr><tr><td><div>}}</div></td></tr></table></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">files</td><td style="vertical-align:top;">:</td><td><div><table></table></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">flash</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">generic_patterns</td><td style="vertical-align:top;">:</td><td><div><table></table></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">google_analytics_id</td><td style="vertical-align:top;">:</td><td><div>None</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">headers</td><td style="vertical-align:top;">:</td><td><div><table><tr><td style="font-weight:bold;vertical-align:top;">X-Powered-By</td><td style="vertical-align:top;">:</td><td><div>web2py</div></td></tr></table></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">logo</td><td style="vertical-align:top;">:</td><td><div><a class="brand" href="http://www.web2py.com/"><b>web<span>2</span>py</b>&trade;&nbsp;</a></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">menu</td><td style="vertical-align:top;">:</td><td><div><table><tr><td><div><table><tr><td><div>BRT\xe6\x96\xb0\xe8\x81\x9e</div></td></tr><tr><td><div>False</div></td></tr><tr><td><div>/fbBrt/default/display_news</div></td></tr><tr><td><div><table><tr><td><div><table><tr><td><div>\xe5\x8d\xb3\xe6\x99\x82\xe6\x96\xb0\xe8\x81\x9e</div></td></tr><tr><td><div>False</div></td></tr><tr><td><div>/fbBrt/default/realtime_news</div></td></tr></table></div></td></tr><tr><td><div><table><tr><td><div>\xe6\x9c\xac\xe9\x80\xb1\xe6\x9c\x80\xe7\x86\xb1\xe9\x96\x80</div></td></tr><tr><td><div>False</div></td></tr><tr><td><div>/fbBrt/default/Hottest_news</div></td></tr></table></div></td></tr><tr><td><div><table><tr><td><div>\xe6\xad\xb7\xe5\x8f\xb2\xe6\x96\xb0\xe8\x81\x9e\xe6\x8e\x92\xe5\x90\x8d</div></td></tr><tr><td><div>False</div></td></tr><tr><td><div>/fbBrt/default/History_news</div></td></tr></table></div></td></tr></table></div></td></tr></table></div></td></tr><tr><td><div><table><tr><td><div>\xe7\xb6\xb2\xe5\x8f\x8b</div></td></tr><tr><td><div>False</div></td></tr><tr><td><div>/fbBrt/default/display_people</div></td></tr><tr><td><div><table><tr><td><div><table><tr><td><div>\xe6\x9c\x80\xe6\x96\xb0\xe5\x9b\x9e\xe8\xa6\x86</div></td></tr><tr><td><div>False</div></td></tr><tr><td><div>/fbBrt/default/addPeople</div></td></tr></table></div></td></tr></table></div></td></tr></table></div></td></tr><tr><td><div><table><tr><td><div>Page</div></td></tr><tr><td><div>False</div></td></tr><tr><td><div>/fbBrt/default/display_page</div></td></tr><tr><td><div><table><tr><td><div><table><tr><td><div>Page Count</div></td></tr><tr><td><div>False</div></td></tr><tr><td><div>/fbBrt/default/index</div></td></tr></table></div></td></tr><tr><td><div><table><tr><td><div>Add Page</div></td></tr><tr><td><div>False</div></td></tr><tr><td><div>/fbBrt/default/addPage</div></td></tr></table></div></td></tr></table></div></td></tr></table></div></td></tr><tr><td><div><table><tr><td><div>Post</div></td></tr><tr><td><div>False</div></td></tr><tr><td><div>/fbBrt/default/display_post</div></td></tr><tr><td><div><table><tr><td><div><table><tr><td><div>Add Post</div></td></tr><tr><td><div>False</div></td></tr><tr><td><div>/fbBrt/default/addpost</div></td></tr></table></div></td></tr></table></div></td></tr></table></div></td></tr></table></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">meta</td><td style="vertical-align:top;">:</td><td><div><table><tr><td style="font-weight:bold;vertical-align:top;">author</td><td style="vertical-align:top;">:</td><td><div>Your Name &lt;you@example.com&gt;</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">description</td><td style="vertical-align:top;">:</td><td><div>a cool new app</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">generator</td><td style="vertical-align:top;">:</td><td><div>Web2py Web Framework</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">keywords</td><td style="vertical-align:top;">:</td><td><div>web2py, python, framework</div></td></tr></table></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">models_to_run</td><td style="vertical-align:top;">:</td><td><div><table><tr><td><div>^\\w+\\.py$</div></td></tr><tr><td><div>^default/\\w+\\.py$</div></td></tr><tr><td><div>^default/index/\\w+\\.py$</div></td></tr></table></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">postprocessing</td><td style="vertical-align:top;">:</td><td><div><table></table></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">session_client</td><td style="vertical-align:top;">:</td><td><div>127.0.0.1</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">session_cookie_compression_level</td><td style="vertical-align:top;">:</td><td><div>None</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">session_cookie_expires</td><td style="vertical-align:top;">:</td><td><div>None</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">session_cookie_key</td><td style="vertical-align:top;">:</td><td><div>None</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">session_data_name</td><td style="vertical-align:top;">:</td><td><div>session_data_fbbrt</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">session_file</td><td style="vertical-align:top;">:</td><td><div>&lt;open file &#x27;/Users/logadmin/Documents/web2py/Contents/Resources/applications/fbBrt/sessions/127.0.0.1-8cd3e489-2cc0-4a52-9ff7-9054bf7de8e0&#x27;, mode &#x27;rb+&#x27; at 0x161d4c810&gt;</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">session_filename</td><td style="vertical-align:top;">:</td><td><div>/Users/logadmin/Documents/web2py/Contents/Resources/applications/fbBrt/sessions/127.0.0.1-8cd3e489-2cc0-4a52-9ff7-9054bf7de8e0</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">session_hash</td><td style="vertical-align:top;">:</td><td><div>75e0630394afd86b82a7fccf7ea74101</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">session_id</td><td style="vertical-align:top;">:</td><td><div>127.0.0.1-8cd3e489-2cc0-4a52-9ff7-9054bf7de8e0</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">session_id_name</td><td style="vertical-align:top;">:</td><td><div>session_id_fbbrt</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">session_locked</td><td style="vertical-align:top;">:</td><td><div>True</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">session_masterapp</td><td style="vertical-align:top;">:</td><td><div>fbBrt</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">session_new</td><td style="vertical-align:top;">:</td><td><div>False</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">session_storage_type</td><td style="vertical-align:top;">:</td><td><div>file</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">status</td><td style="vertical-align:top;">:</td><td><div>200</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">subtitle</td><td style="vertical-align:top;">:</td><td><div>customize me!</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">title</td><td style="vertical-align:top;">:</td><td><div>Fbbrt</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">view</td><td style="vertical-align:top;">:</td><td><div>default/index.html</div></td></tr></table></div>'
+tRp133
+sS'locals'
+p134
+(dp135
+g4
+S"'/Users/logadmin/Documents/web2py/Contents/Resources/applications/fbBrt/controllers/default.py'"
+p136
+sg6
+S"'# -*- coding: utf-8 -*-\\n# this file is released ...=crud())\\n\\nresponse._vars=response._caller(index)\\n'"
+p137
+sssS'traceback'
+p138
+S'Traceback (most recent call last):\n  File "/Users/logadmin/Documents/web2py/Contents/Resources/gluon/restricted.py", line 219, in restricted\n    ccode = compile2(code, layer)\n  File "/Users/logadmin/Documents/web2py/Contents/Resources/gluon/restricted.py", line 202, in compile2\n    return compile(code.rstrip().replace(\'\\r\\n\', \'\\n\') + \'\\n\', layer, \'exec\')\n  File "/Users/logadmin/Documents/web2py/Contents/Resources/applications/fbBrt/controllers/default.py", line 37\n    <<<<<<< HEAD\n     ^\nSyntaxError: invalid syntax\n'
+p139
+s.

@@ -34,7 +34,6 @@ def index():
         response.flash = T('You are %(name)s', dict(name=user['first_name']))
         return dict(message=T('Hello, Facebook is telling that you are %(first_name)s %(last_name)s', dict(first_name=user['first_name'], last_name=user['last_name'])))
     response.flash = T('Welcome to web2py')
-<<<<<<< HEAD
 =======
     response.flash = T(dictionary_path)
 >>>>>>> FETCH_HEAD
