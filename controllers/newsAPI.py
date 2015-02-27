@@ -57,7 +57,7 @@ def index():
     Brtnews7days_url = "https://www.kimonolabs.com/api/ajldjyxq?apikey=22879e6cd7538eea6e95b90aa70afccc"
     Brtnews30days_url = "https://www.kimonolabs.com/api/5xnus1ws?apikey=22879e6cd7538eea6e95b90aa70afccc"
     Brtnews1year_url = "https://www.kimonolabs.com/api/d1shcaww?apikey=22879e6cd7538eea6e95b90aa70afccc"
-    kimono_api(Brtnews1year_url, "BRT")
+    kimono_api(Brtnews30days_url, "BRT")
     
 
     mayor24_url = "https://www.kimonolabs.com/api/7br3eu62?apikey=22879e6cd7538eea6e95b90aa70afccc"
@@ -91,6 +91,14 @@ def index():
 
     return "OK"
 
+def test():
+    return response.json(get_og_url('http://news.ltn.com.tw/news/opinion/breakingnews/1222089'))
+
+def test2():
+    t=News("http://www.appledaily.com.tw/realtimenews/article/new/20150112/540406/")
+    t.updateNewComments()
+    return t.Comments
+
 
 def commentsByKeywords():
     key = '%女性%'
@@ -112,6 +120,7 @@ def commentsByKeywords():
 
     return dict(comments=comments)
 
+@auth.requires_login()
 def Socialcount():
     rows = fbdb(fbdb.news.id <> '').select()
     for row in rows:
@@ -134,7 +143,7 @@ def fix_url():
 
 @auth.requires_login()
 def update_socialcount():
-    rows = fbdb(fbdb.news.id <> '').select()
+    rows = fbdb(fbdb.news.fid <> None).select()
     test=[]
     for row in rows:
         news_object = News(row.href)
@@ -213,23 +222,24 @@ def kimono_api(url, from_team):
         #     related_news_date_time.append(related_news_date_time2)
         #     related_news_source.append(news["related_news_source"])
         if href != '':
-            row = fbdb(fbdb.news.href == href).select().first()
-            if not row:
-                #url = "http://" + urllib.quote(href.split("http://")[1])
-                href = href.strip()
-                url2 = href.split("://")[0] + "://" + urllib.quote(href.split("://")[1])
-                og = get_og_url(url2)
-                fid = og["fid"]
-                fb_url = og["fb_url"]
-                created_time = og["created_time"]
-                updated_time = og["updated_time"]
-                share_count = og["share_count"]
-                comment_count = og["comment_count"]
-                fbdb.news.insert(fid=fid, fb_url=fb_url, href=href, created_time=created_time,updated_time=updated_time, date_time=date_time, source=source, summary=summary, title=title, photo=photo, related_news=json.dumps(related_news),
-                                 related_news_date_time=related_news_date_time,
-                                 related_news_source=json.dumps(related_news_source), from_team=from_team,
-                                 share_count=share_count, comment_count=comment_count)
-                fbdb.commit()
+            #url = "http://" + urllib.quote(href.split("http://")[1])
+            href = href.strip()
+            url2 = href.split("://")[0] + "://" + urllib.quote(href.split("://")[1])
+            og = get_og_url(url2)
+            # fid = og["fid"]
+            # fb_url = og["fb_url"]
+            # created_time = og["created_time"]
+            # updated_time = og["updated_time"]
+            # share_count = og["share_count"]
+            # comment_count = og["comment_count"]
+            if og["title"] == None:
+                og["title"] = title
+            fbdb.news.update_or_insert(fbdb.news.href==href,from_team=from_team, href=href,summary=summary, source=source, date_time=date_time,  **og)
+            # fbdb.news.update_or_insert(fbdb.news.href==href, fb_url=fb_url, href=href, created_time=created_time,updated_time=updated_time, date_time=date_time, source=source, summary=summary, title=title, photo=photo, related_news=json.dumps(related_news),
+            #                  related_news_date_time=related_news_date_time,
+            #                  related_news_source=json.dumps(related_news_source), from_team=from_team,
+            #                  share_count=share_count, comment_count=comment_count)
+            fbdb.commit()
 
                 #getUrlSocialCount(fb_url)
 
@@ -248,15 +258,17 @@ def checkDBNewsCommentsFromDate(from_date):
             news_source = row["source"]
             getNewsComments(ids, from_team, news_source)
 
+@auth.requires_login()
 def checkDBNewsComments():
-    rows = fbdb((fbdb.news.id <> '') & (fbdb.news.comment_count > 0)).select()  #
+    rows = fbdb((fbdb.news.fid <> None) & (fbdb.news.comment_count > 0)).select()  #
     for row in rows:
         ids = row["fid"]
+        href = row["href"]
         if ids != None:
             #ids = "http://" + urllib.quote(ids.split("http://")[1])
             from_team = row["from_team"]
             news_source = row["source"]
-            getNewsComments(ids, from_team, news_source)
+            getNewsComments(ids, from_team, news_source, href)
 
     return "Ok"
 

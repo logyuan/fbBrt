@@ -1,0 +1,661 @@
+(dp1
+S'output'
+p2
+S"<type 'exceptions.SyntaxError'> Field description does not belong to the table"
+p3
+sS'layer'
+p4
+S'/Users/logyuan/Documents/web2py/applications/fbBrt/controllers/newsAPI.py'
+p5
+sS'code'
+p6
+S'# coding: utf8\n# try something like\nimport urllib\nimport json\nimport dateutil\nimport datetime\nimport string\nimport re\nimport itertools\nfrom collections import Counter\nfrom collections import OrderedDict\nfrom dateutil import parser\nfrom datetime import timedelta\nimport jieba\nimport jieba.analyse\nimport jieba.posseg as pseg\nfrom snownlp import SnowNLP\nfrom snownlp import sentiment\nfrom datetime import timedelta\nfrom operator import itemgetter\nimport codecs\nimport os\n\n#pos_train = os.path.join(request.folder,\'private\',\'dictionary\',\'pos.txt\')\n#nag_train = os.path.join(request.folder,\'private\',\'dictionary\',\'nag.txt\')\n#sentiment.train(pos_train, nag_train)\n\n#sentiment.save(os.path.join(request.folder,\'private\',\'sentiment.marshal\'))\n# sentiment.train(\'/usr/local/lib/python2.7/site-packages/snownlp/sentiment/blue.txt\', \'/usr/local/lib/python2.7/site-packages/snownlp/sentiment/green.txt\')\n#sentiment.save(\'/usr/local/lib/python2.7/site-packages/snownlp/sentiment/sentiment.marshal\')\n\n\ndictionary_path = os.path.join(request.folder,\'private\',\'dictionary\',\'dict.txt.big.txt\')\nuserdict_path = os.path.join(request.folder,\'private\',\'dictionary\',\'userdict.txt\')\nstopwords_path = os.path.join(request.folder,\'private\',\'dictionary\',\'stop_words.txt\')\nidf_path = os.path.join(request.folder,\'private\',\'dictionary\',\'idf.txt.big.txt\')\n\njieba.set_dictionary(dictionary_path)\njieba.load_userdict(userdict_path)\njieba.analyse.set_stop_words(stopwords_path)\njieba.analyse.set_idf_path(idf_path)\n\nstopwords_file = open(stopwords_path, \'r\')\nstopwords = [unicode(line.strip(\'\\n\'), "utf-8") for line in stopwords_file.readlines()]\n\n\n#jieba.initialize()\n\n\ndelEnStr = string.punctuation + \' \' + string.digits\ndelZhStr = u\'\xe3\x80\x8a\xe3\x80\x8b\xef\xbc\x88\xef\xbc\x89&%\xef\xbf\xa5#@\xef\xbc\x81{}\xe3\x80\x90\xe3\x80\x91\xe3\x80\x8c\xe3\x80\x8d\xe3\x80\x8e\xe3\x80\x8f\xef\xbc\x9f\xef\xbd\x9c\xef\xbc\x8c\xe3\x80\x81\xe3\x80\x82\xef\xbc\x9a\xef\xbc\x9b\xe4\xb8\xb6\xef\xbd\x9e\xe3\x80\x80\' + delEnStr.encode(\'utf8\')\n\n\ndef index():\n    started_time = datetime.datetime.now()\n    Brtnews24_url = "https://www.kimonolabs.com/api/47bg0pfm?apikey=22879e6cd7538eea6e95b90aa70afccc"\n    Brtnews7days_url = "https://www.kimonolabs.com/api/ajldjyxq?apikey=22879e6cd7538eea6e95b90aa70afccc"\n    Brtnews30days_url = "https://www.kimonolabs.com/api/5xnus1ws?apikey=22879e6cd7538eea6e95b90aa70afccc"\n    Brtnews1year_url = "https://www.kimonolabs.com/api/d1shcaww?apikey=22879e6cd7538eea6e95b90aa70afccc"\n    kimono_api(Brtnews7days_url, "BRT")\n    \n\n    mayor24_url = "https://www.kimonolabs.com/api/7br3eu62?apikey=22879e6cd7538eea6e95b90aa70afccc"\n    mayor7days_url = "https://www.kimonolabs.com/api/863lok12?apikey=22879e6cd7538eea6e95b90aa70afccc"\n    mayor30days_url = "https://www.kimonolabs.com/api/8h259vhq?apikey=22879e6cd7538eea6e95b90aa70afccc"\n    mayor1year_url = "https://www.kimonolabs.com/api/cs5dtbm0?apikey=22879e6cd7538eea6e95b90aa70afccc"\n    #kimono_api(mayor1year_url, "\xe6\x9e\x97\xe4\xbd\xb3\xe9\xbe\x8d")\n\n    today = datetime.datetime.today()\n    date = today - timedelta(days=3)\n    fromdate = datetime.datetime.strftime(date, "%Y/%m/%d")\n    todate = datetime.datetime.strftime(today, "%Y/%m/%d")\n    #checkDBNewsComments()\n    #checkDBNewsCommentsFromDate(fromdate)\n    ended_time = datetime.datetime.now()\n    fbdb.event_logs.insert(function=\'kimono_api\', started_time=started_time, ended_time=ended_time)\n    fbdb.commit()\n    started_time = datetime.datetime.now()\n    Socialcount()\n    ended_time = datetime.datetime.now()\n    fbdb.event_logs.insert(function=\'updateSocialcount\', started_time=started_time, ended_time=ended_time)\n    fbdb.commit()\n    started_time = datetime.datetime.now()\n    checkDBNewsComments()\n    ended_time = datetime.datetime.now()\n    fbdb.event_logs.insert(function=\'checkDBNewsComments\', started_time=started_time, ended_time=ended_time)\n    fbdb.commit()\n\n\n\n\n    return "OK"\n\ndef test():\n    return response.json(get_og_url(\'http://news.ltn.com.tw/news/opinion/breakingnews/1222089\'))\n\ndef commentsByKeywords():\n    key = \'%\xe5\xa5\xb3\xe6\x80\xa7%\'\n    rows = fbdb(fbdb.news.summary.like(key)).select()\n    newslist = []\n    for row in rows:\n        if row["fid"] != None:\n            newslist.append(row["fid"])\n    rows = fbdb(fbdb.news_comments.news_fid.belongs(newslist)).select()\n    comments = []\n    likes = []\n    for row in rows:\n        if row["like_count"] > 10:\n            news = fbdb(fbdb.news.fid == row["news_fid"]).select().first()\n            comments.append(\'news_title:\' + row["news_fid"] + news["title"] + \' like_count:\' + str(\n                row["like_count"]) + \' message: \' + row["message"])\n            likes.append(row["like_count"])\n    likes, comments = [list(x) for x in zip(*sorted(zip(likes, comments), key=itemgetter(0), reverse=True))]\n\n    return dict(comments=comments)\n\ndef Socialcount():\n    rows = fbdb(fbdb.news.id <> \'\').select()\n    for row in rows:\n        news_object = News(row.href)\n        news_object.updateSocialCount()\n\n    return \'OK\'\n\ndef fix_url():\n    rows = fbdb(fbdb.news_comments.news_fid == None).select()\n    for row in rows:\n        fid = row["fid"]\n        news_fid = fid.split(\'_\')[0]\n        #url = "http://" + urllib.quote(href.split("http://")[1])\n        #og = get_og_url(url)\n        #fid = og["fid"]\n        #fb_url = og["fb_url"]\n\n        row.update_record(news_fid=news_fid)\n\n@auth.requires_login()\ndef update_socialcount():\n    rows = fbdb(fbdb.news.id <> \'\').select()\n    test=[]\n    for row in rows:\n        news_object = News(row.href)\n        test.append(news_object.fb_url)\n        news_object.updateSocialCount()\n        \n\n    return test\n\ndef fix_seg():\n    rows = fbdb(fbdb.news_comments.id <> \'\').select()\n    for row in rows:\n        message = row["message"]\n        segment = list(jieba.cut(message))\n        row.update_record(segment=segment)\n\n\ndef kimono_api(url, from_team):\n    response = urllib.urlopen(url)\n    data = json.load(response)\n    updatedtime = parser.parse(data["lastsuccess"]) + timedelta(hours=8)\n    news_array = data["results"]["collection1"]\n    for news in news_array:\n        date_time = news["datetime"]\n        if u\' \xe5\xb0\x8f\xe6\x99\x82\xe5\x89\x8d\' in date_time:\n            hours = int(date_time.strip(u\' \xe5\xb0\x8f\xe6\x99\x82\xe5\x89\x8d\'))\n            date_time = updatedtime - timedelta(hours=hours)\n        elif u\' \xe5\x88\x86\xe9\x90\x98\xe5\x89\x8d\' in date_time:\n            minutes = int(date_time.strip(u\' \xe5\x88\x86\xe9\x90\x98\xe5\x89\x8d\'))\n            date_time = updatedtime - timedelta(minutes=minutes)\n        else:\n            date_time = date_time.replace(u\'\xe5\xb9\xb4\', \'/\').replace(u\'\xe6\x9c\x88\', \'/\').strip(u\'\xe6\x97\xa5\')\n            date_time = parser.parse(date_time) + timedelta(hours=12)\n\n        source = news["source"]\n        summary = news["summary"]\n        title = news["title"]["text"]\n        href = news["title"]["href"]\n        photo = news["photo"]["src"] if \'src\' in news["photo"] else \'\'\n\n        related_news = []\n        related_news_date_time = []\n        related_news_source = []\n\n        # if isinstance(news["related_news_datetime"], list):\n        #     for item in news["related_news_datetime"]:\n        #         if u\' \xe5\xb0\x8f\xe6\x99\x82\xe5\x89\x8d\' in item:\n        #             hours = int(item.strip(u\' \xe5\xb0\x8f\xe6\x99\x82\xe5\x89\x8d\'))\n        #             item = updated_time - timedelta(hours=hours)\n        #             related_news_date_time.append(item)\n        #         elif u\' \xe5\x88\x86\xe9\x90\x98\xe5\x89\x8d\' in item:\n        #             minutes = int(item.strip(u\' \xe5\x88\x86\xe9\x90\x98\xe5\x89\x8d\'))\n        #             item = updated_time - timedelta(minutes=minutes)\n        #             related_news_date_time.append(item)\n        #         else:\n        #             item = item.replace(u\'\xe5\xb9\xb4\', \'/\').replace(u\'\xe6\x9c\x88\', \'/\').strip(u\'\xe6\x97\xa5\')\n        #             item = parser.parse(item) + timedelta(hours=12)\n        #             related_news_date_time.append(item)\n        #     related_news = news["related_news"]\n        #     related_news_source = news["related_news_source"]\n        # elif news["related_news_datetime"] == "":\n        #     pass\n        # else:\n        #     if u\' \xe5\xb0\x8f\xe6\x99\x82\xe5\x89\x8d\' in news["related_news_datetime"]:\n        #         hours = int(news["related_news_datetime"].strip(u\' \xe5\xb0\x8f\xe6\x99\x82\xe5\x89\x8d\'))\n        #         related_news_date_time2 = updated_time - timedelta(hours=hours)\n        #     elif u\' \xe5\x88\x86\xe9\x90\x98\xe5\x89\x8d\' in news["related_news_datetime"]:\n        #         minutes = int(news["related_news_datetime"].strip(u\' \xe5\x88\x86\xe9\x90\x98\xe5\x89\x8d\'))\n        #         related_news_date_time2 = updated_time - timedelta(minutes=minutes)\n        #     else:\n        #         related_news_date_time2 = news["related_news_datetime"].replace(u\'\xe5\xb9\xb4\', \'/\').replace(u\'\xe6\x9c\x88\', \'/\').strip(\n        #             u\'\xe6\x97\xa5\')\n        #         related_news_date_time2 = parser.parse(related_news_date_time2) + timedelta(hours=12)\n        #\n        #     related_news.append(news["related_news"])\n        #     related_news_date_time.append(related_news_date_time2)\n        #     related_news_source.append(news["related_news_source"])\n        if href != \'\':\n            #url = "http://" + urllib.quote(href.split("http://")[1])\n            href = href.strip()\n            url2 = href.split("://")[0] + "://" + urllib.quote(href.split("://")[1])\n            og = get_og_url(url2)\n            fid = og["fid"]\n            fb_url = og["fb_url"]\n            created_time = og["created_time"]\n            updated_time = og["updated_time"]\n            share_count = og["share_count"]\n            comment_count = og["comment_count"]\n            fbdb.news.update_or_insert(fbdb.news.href==href,from_team=from_team,**og)\n            # fbdb.news.update_or_insert(fbdb.news.href==href, fb_url=fb_url, href=href, created_time=created_time,updated_time=updated_time, date_time=date_time, source=source, summary=summary, title=title, photo=photo, related_news=json.dumps(related_news),\n            #                  related_news_date_time=related_news_date_time,\n            #                  related_news_source=json.dumps(related_news_source), from_team=from_team,\n            #                  share_count=share_count, comment_count=comment_count)\n            fbdb.commit()\n\n                #getUrlSocialCount(fb_url)\n\n    return json.dumps(data)\n    #return "Success!"\n    #return dict(message="hello from newsAPI.py")\n\ndef checkDBNewsCommentsFromDate(from_date):\n    from_date = datetime.datetime.strptime(from_date, "%Y/%m/%d")\n    rows = fbdb(fbdb.news.date_time >= from_date).select()\n    for row in rows:\n        ids = row["fid"]\n        if ids != None:\n            #ids = "http://" + urllib.quote(ids.split("http://")[1])\n            from_team = row["from_team"]\n            news_source = row["source"]\n            getNewsComments(ids, from_team, news_source)\n\ndef checkDBNewsComments():\n    rows = fbdb((fbdb.news.id <> \'\') & (fbdb.news.comment_count > 0)).select()  #\n    for row in rows:\n        ids = row["fid"]\n        if ids != None:\n            #ids = "http://" + urllib.quote(ids.split("http://")[1])\n            from_team = row["from_team"]\n            news_source = row["source"]\n            getNewsComments(ids, from_team, news_source)\n\n    return "Ok"\n\ndef BestComments():\n    stoplist = list(delZhStr)\n    stoplist.extend(stopwords)\n    p_wordclouds = []\n    p_wordcloud = []\n    p_wordclouds2 = []\n\n    male_wordcloud = []\n    female_wordcloud = []\n\n    male_wordclouds = []\n    male_wordclouds_a = []\n    male_wordclouds_n = []\n    male_wordclouds_nr = []\n    male_wordclouds_v = []\n\n    female_wordclouds = []\n    female_wordclouds_a = []\n    female_wordclouds_n = []\n    female_wordclouds_nr = []\n    female_wordclouds_v = []\n\n    male_wordcloud_a = []\n    male_wordcloud_n = []\n    male_wordcloud_nr = []\n    male_wordcloud_v = []\n\n    female_wordcloud_a = []\n    female_wordcloud_n = []\n    female_wordcloud_nr = []\n    female_wordcloud_v = []\n\n    wordcloud_a = []\n    wordcloud_n = []\n    wordcloud_nr = []\n    wordcloud_v = []\n    wordcloud_a2 = []\n    wordcloud_n2 = []\n    wordcloud_nr2 = []\n    wordcloud_v2 = []\n\n    now = datetime.datetime.today()\n    q_time = now - timedelta(days=7)\n    #rows = fbdb((fbdb.news_comments.like_count >= 1)&(fbdb.news_comments.from_team==\'\xe9\x80\xa3\xe5\x8b\x9d\xe6\x96\x87\')&(fbdb.news_comments.created_time >=q_time)).select()\n    rows = fbdb(fbdb.news_comments.id <> \'\').select()\n    for row in rows:\n        #segments = list(set(row[\'segment\']))\n        segments = pseg.cut(row[\'message\'])\n        count = row["like_count"]  #// 10\n        #count= 1\n        wordclouds_a = []\n        wordclouds_n = []\n        wordclouds_nr = []\n        wordclouds_v = []\n        for j in range(0, count):\n            for i in segments:\n                if (i.word not in stoplist):\n                    p_wordclouds2.append(i.word)\n                if (re.search("^a", i.flag) <> None) & (i.word not in stoplist):\n                    wordclouds_a.append(i.word)\n                elif (i.flag == \'n\') & (i.word not in stoplist):\n                    wordclouds_n.append(i.word)\n                elif (i.flag == \'nr\') & (i.word not in stoplist):\n                    wordclouds_nr.append(i.word)\n                elif (re.search("^v", i.flag) <> None) & (i.word not in stoplist):\n                    wordclouds_v.append(i.word)\n        p_wordclouds.extend(p_wordclouds2)\n        userid = row["from_id"]\n        user = fbdb(fbdb.people.uid == userid).select().first()\n        sex = user[\'gender\'] if user else None\n        #likes = row[\'likes\'] if ((\'likes\' in row) & (row[\'likes\'] != None) & (row[\'likes\'] != {})) else []\n        #for like in likes:\n        wordcloud_a2.extend(list(set(wordclouds_a)))\n        wordcloud_n2.extend(list(set(wordclouds_n)))\n        wordcloud_nr2.extend(list(set(wordclouds_nr)))\n        wordcloud_v2.extend(list(set(wordclouds_v)))\n\n        if sex == \'female\':\n            female_wordclouds.extend(list(set(p_wordclouds2)))\n            female_wordclouds_a.extend(list(set(wordclouds_a)))\n            female_wordclouds_n.extend(list(set(wordclouds_n)))\n            female_wordclouds_nr.extend(list(set(wordclouds_nr)))\n            female_wordclouds_v.extend(list(set(wordclouds_v)))\n        elif sex == \'male\':\n            male_wordclouds.extend(list(set(p_wordclouds2)))\n            male_wordclouds_a.extend(list(set(wordclouds_a)))\n            male_wordclouds_n.extend(list(set(wordclouds_n)))\n            male_wordclouds_nr.extend(list(set(wordclouds_nr)))\n            male_wordclouds_v.extend(list(set(wordclouds_v)))\n        else:\n            pass\n    for item in Counter(wordcloud_a2).most_common(150):\n        #s = SnowNLP(item[0]) , \'tag\': s.tags\n        wordcloud_a.append({\'name\': item[0], \'size\': item[1]})\n    for item in Counter(wordcloud_n2).most_common(150):\n        #s = SnowNLP(item[0]) , \'tag\': s.tags\n        wordcloud_n.append({\'name\': item[0], \'size\': item[1]})\n    for item in Counter(wordcloud_nr2).most_common(150):\n        #s = SnowNLP(item[0]) , \'tag\': s.tags\n        wordcloud_nr.append({\'name\': item[0], \'size\': item[1]})\n    for item in Counter(wordcloud_v2).most_common(150):\n        #s = SnowNLP(item[0]) , \'tag\': s.tags\n        wordcloud_v.append({\'name\': item[0], \'size\': item[1]})\n\n    for item in Counter(female_wordclouds).most_common(150):\n        #s = SnowNLP(item[0]) , \'tag\': s.tags\n        female_wordcloud.append({\'name\': item[0], \'size\': item[1]})\n    for item in Counter(male_wordclouds).most_common(150):\n        #s = SnowNLP(item[0]) , \'tag\': s.tags\n        male_wordcloud.append({\'name\': item[0], \'size\': item[1]})\n\n    list_a_female100 = []\n    list_n_female100 = []\n    list_nr_female100 = []\n    list_v_female100 = []\n\n    for item in Counter(female_wordclouds_a).most_common(100):\n        #s = SnowNLP(item[0]) , \'tag\': s.tags\n        female_wordcloud_a.append({\'name\': item[0], \'size\': item[1]})\n        list_a_female100.append(item[0])\n\n    for item in Counter(female_wordclouds_n).most_common(100):\n        #s = SnowNLP(item[0]) , \'tag\': s.tags\n        female_wordcloud_n.append({\'name\': item[0], \'size\': item[1]})\n        list_n_female100.append(item[0])\n\n    for item in Counter(female_wordclouds_nr).most_common(100):\n        #s = SnowNLP(item[0]) , \'tag\': s.tags\n        female_wordcloud_nr.append({\'name\': item[0], \'size\': item[1]})\n        list_nr_female100.append(item[0])\n\n    for item in Counter(female_wordclouds_v).most_common(100):\n        #s = SnowNLP(item[0]) , \'tag\': s.tags\n        female_wordcloud_v.append({\'name\': item[0], \'size\': item[1]})\n        list_v_female100.append(item[0])\n\n    list_a_male100 = []\n    list_n_male100 = []\n    list_nr_male100 = []\n    list_v_male100 = []\n\n    for item in Counter(male_wordclouds_a).most_common(100):\n        #s = SnowNLP(item[0]) , \'tag\': s.tags\n        male_wordcloud_a.append({\'name\': item[0], \'size\': item[1]})\n        list_a_male100.append(item[0])\n\n    for item in Counter(male_wordclouds_n).most_common(100):\n        #s = SnowNLP(item[0]) , \'tag\': s.tags\n        male_wordcloud_n.append({\'name\': item[0], \'size\': item[1]})\n        list_n_male100.append(item[0])\n\n    for item in Counter(male_wordclouds_nr).most_common(100):\n        #s = SnowNLP(item[0]) , \'tag\': s.tags\n        male_wordcloud_nr.append({\'name\': item[0], \'size\': item[1]})\n        list_nr_male100.append(item[0])\n\n    for item in Counter(male_wordclouds_v).most_common(100):\n        #s = SnowNLP(item[0]) , \'tag\': s.tags\n        male_wordcloud_v.append({\'name\': item[0], \'size\': item[1]})\n        list_v_male100.append(item[0])\n\n    female_wordcloud_a_special = []\n    female_wordcloud_n_special = []\n    female_wordcloud_nr_special = []\n    female_wordcloud_v_special = []\n\n    for item in Counter(female_wordclouds_a).most_common(100):\n        if item[0] not in list_a_male100:\n            female_wordcloud_a_special.append({\'name\': item[0], \'size\': item[1]})\n\n    for item in Counter(female_wordclouds_n).most_common(100):\n        if item[0] not in list_n_male100:\n            female_wordcloud_n_special.append({\'name\': item[0], \'size\': item[1]})\n\n    for item in Counter(female_wordclouds_nr).most_common(100):\n        if item[0] not in list_nr_male100:\n            female_wordcloud_nr_special.append({\'name\': item[0], \'size\': item[1]})\n\n    for item in Counter(female_wordclouds_v).most_common(100):\n        if item[0] not in list_v_male100:\n            female_wordcloud_v_special.append({\'name\': item[0], \'size\': item[1]})\n\n    male_wordcloud_a_special = []\n    male_wordcloud_n_special = []\n    male_wordcloud_nr_special = []\n    male_wordcloud_v_special = []\n\n    for item in Counter(male_wordclouds_a).most_common(100):\n        if item[0] not in list_a_female100:\n            male_wordcloud_a_special.append({\'name\': item[0], \'size\': item[1]})\n\n    for item in Counter(male_wordclouds_n).most_common(100):\n        if item[0] not in list_n_female100:\n            male_wordcloud_n_special.append({\'name\': item[0], \'size\': item[1]})\n\n    for item in Counter(male_wordclouds_nr).most_common(100):\n        if item[0] not in list_nr_female100:\n            male_wordcloud_nr_special.append({\'name\': item[0], \'size\': item[1]})\n\n    for item in Counter(male_wordclouds_v).most_common(100):\n        if item[0] not in list_v_female100:\n            male_wordcloud_v_special.append({\'name\': item[0], \'size\': item[1]})\n\n    flare = {}\n    flare = {"name": "flare", "children": [{"name": "female_wordcloud",\n                                            "children": [{"name": "adj", "children": female_wordcloud_a_special},\n                                                         {"name": "v", "children": female_wordcloud_v_special},\n                                                         {"name": "nr", "children": female_wordcloud_nr_special},\n                                                         {"name": "n", "children": female_wordcloud_n_special}]}]}\n\n    f = open(os.path.join(request.folder,\'private\',\'d3\',\'BestComments_female.json\'), \'w+\')\n    f.write(json.dumps(flare, sort_keys=False, separators=(\',\', \':\'), indent=4))\n    f.close()\n    flare = {}\n    flare = {"name": "flare", "children": [{"name": "male_wordcloud",\n                                            "children": [{"name": "adj", "children": male_wordcloud_a_special},\n                                                         {"name": "v", "children": male_wordcloud_v_special},\n                                                         {"name": "nr", "children": male_wordcloud_nr_special},\n                                                         {"name": "n", "children": male_wordcloud_n_special}]}]}\n    f = open(os.path.join(request.folder,\'private\',\'d3\',\'BestComments_male.json\'), \'w+\')\n    f.write(json.dumps(flare, sort_keys=False, separators=(\',\', \':\'), indent=4))\n    f.close()\n\n    flare = {}\n    flare = {"name": "flare", "children": [{"name": "wordcloud", "children": [{"name": "adj", "children": wordcloud_a},\n                                                                              {"name": "v", "children": wordcloud_v},\n                                                                              {"name": "nr", "children": wordcloud_nr},\n                                                                              {"name": "n", "children": wordcloud_n}]}]}\n    f = open(os.path.join(request.folder,\'private\',\'d3\',\'BestComments.json\'), \'w+\')\n    f.write(json.dumps(flare, sort_keys=False, separators=(\',\', \':\'), indent=4))\n    f.close()\n\n    f = codecs.open(os.path.join(request.folder,\'private\',\'d3\',\'wordcloud.txt\'), \'w+\', \'utf-8\')\n    for item in list(set(p_wordclouds)):\n        f.write(item + \'\\n\')\n    f.close()\n\n    return dict(message="OK")\n    #return len(rows)\n    #return json.dumps(female_wordclouds_nr)\n\n\n\ndef delay():\n    time.sleep(1.5)\n\nresponse._vars=response._caller(index)\n'
+p7
+sS'snapshot'
+p8
+(dp9
+S'exception'
+p10
+(dp11
+S'__getslice__'
+p12
+S"<method-wrapper '__getslice__' of exceptions.SyntaxError object>"
+p13
+sS'text'
+p14
+S'None'
+p15
+sS'__str__'
+p16
+S"<method-wrapper '__str__' of exceptions.SyntaxError object>"
+p17
+sS'__reduce__'
+p18
+S'<built-in method __reduce__ of exceptions.SyntaxError object>'
+p19
+sS'__dict__'
+p20
+S'{}'
+p21
+sS'__sizeof__'
+p22
+S'<built-in method __sizeof__ of exceptions.SyntaxError object>'
+p23
+sS'__init__'
+p24
+S"<method-wrapper '__init__' of exceptions.SyntaxError object>"
+p25
+sS'__setattr__'
+p26
+S"<method-wrapper '__setattr__' of exceptions.SyntaxError object>"
+p27
+sS'__reduce_ex__'
+p28
+S'<built-in method __reduce_ex__ of exceptions.SyntaxError object>'
+p29
+sS'__new__'
+p30
+S'<built-in method __new__ of type object>'
+p31
+sS'__format__'
+p32
+S'<built-in method __format__ of exceptions.SyntaxError object>'
+p33
+sS'__class__'
+p34
+S"<type 'exceptions.SyntaxError'>"
+p35
+sS'filename'
+p36
+S'None'
+p37
+sS'lineno'
+p38
+S'None'
+p39
+sS'msg'
+p40
+S"'Field description does not belong to the table'"
+p41
+sS'__doc__'
+p42
+S"'Invalid syntax.'"
+p43
+sS'__getitem__'
+p44
+S"<method-wrapper '__getitem__' of exceptions.SyntaxError object>"
+p45
+sS'__setstate__'
+p46
+S'<built-in method __setstate__ of exceptions.SyntaxError object>'
+p47
+sS'__getattribute__'
+p48
+S"<method-wrapper '__getattribute__' of exceptions.SyntaxError object>"
+p49
+sS'print_file_and_line'
+p50
+S'None'
+p51
+sS'args'
+p52
+S"('Field description does not belong to the table',)"
+p53
+sS'__subclasshook__'
+p54
+S'<built-in method __subclasshook__ of type object>'
+p55
+sS'offset'
+p56
+S'None'
+p57
+sS'__unicode__'
+p58
+S'<built-in method __unicode__ of exceptions.SyntaxError object>'
+p59
+sS'__delattr__'
+p60
+S"<method-wrapper '__delattr__' of exceptions.SyntaxError object>"
+p61
+sS'__repr__'
+p62
+S"<method-wrapper '__repr__' of exceptions.SyntaxError object>"
+p63
+sS'__hash__'
+p64
+S"<method-wrapper '__hash__' of exceptions.SyntaxError object>"
+p65
+ssS'evalue'
+p66
+S'Field description does not belong to the table'
+p67
+sS'request'
+p68
+cgluon.html
+XML_unpickle
+p69
+(S's\xfc[\x00\x00<div><table><tr><td style="font-weight:bold;vertical-align:top;">ajax</td><td style="vertical-align:top;">:</td><td><div>False</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">application</td><td style="vertical-align:top;">:</td><td><div>fbBrt</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">args</td><td style="vertical-align:top;">:</td><td><div><table></table></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">cid</td><td style="vertical-align:top;">:</td><td><div>None</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">client</td><td style="vertical-align:top;">:</td><td><div>127.0.0.1</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">controller</td><td style="vertical-align:top;">:</td><td><div>newsAPI</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">cookies</td><td style="vertical-align:top;">:</td><td><div><table><tr><td style="font-weight:bold;vertical-align:top;">session_id_admin</td><td style="vertical-align:top;">:</td><td><div>127.0.0.1-9af2c555-3449-4e45-8085-df8d161e40ce<table><tr><td style="font-weight:bold;vertical-align:top;">comment</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">domain</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">expires</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">httponly</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">max-age</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">path</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">secure</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">version</td><td style="vertical-align:top;">:</td><td><div></div></td></tr></table></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">session_id_fbbrt</td><td style="vertical-align:top;">:</td><td><div>127.0.0.1-4d79ade0-feab-47b4-b3fd-a6f87751589c<table><tr><td style="font-weight:bold;vertical-align:top;">comment</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">domain</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">expires</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">httponly</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">max-age</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">path</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">secure</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">version</td><td style="vertical-align:top;">:</td><td><div></div></td></tr></table></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">session_id_welcome</td><td style="vertical-align:top;">:</td><td><div>127.0.0.1-6e85adf7-33b1-401a-920c-1b9fb8d16431<table><tr><td style="font-weight:bold;vertical-align:top;">comment</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">domain</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">expires</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">httponly</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">max-age</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">path</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">secure</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">version</td><td style="vertical-align:top;">:</td><td><div></div></td></tr></table></div></td></tr></table></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">env</td><td style="vertical-align:top;">:</td><td><div><table><tr><td style="font-weight:bold;vertical-align:top;">HTTP_ACCEPT</td><td style="vertical-align:top;">:</td><td><div>text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">HTTP_ACCEPT_ENCODING</td><td style="vertical-align:top;">:</td><td><div>gzip, deflate</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">HTTP_ACCEPT_LANGUAGE</td><td style="vertical-align:top;">:</td><td><div>en-us</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">HTTP_CONNECTION</td><td style="vertical-align:top;">:</td><td><div>keep-alive</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">HTTP_COOKIE</td><td style="vertical-align:top;">:</td><td><div>session_id_admin=127.0.0.1-9af2c555-3449-4e45-8085-df8d161e40ce; session_id_fbbrt=127.0.0.1-4d79ade0-feab-47b4-b3fd-a6f87751589c; session_id_welcome=127.0.0.1-6e85adf7-33b1-401a-920c-1b9fb8d16431</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">HTTP_HOST</td><td style="vertical-align:top;">:</td><td><div>localhost:8088</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">HTTP_USER_AGENT</td><td style="vertical-align:top;">:</td><td><div>Mozilla/5.0 (Macintosh; Intel Mac OS X 10_10_2) AppleWebKit/600.3.18 (KHTML, like Gecko) Version/8.0.3 Safari/600.3.18</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">PATH_INFO</td><td style="vertical-align:top;">:</td><td><div>/fbBrt/newsAPI/index</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">QUERY_STRING</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">REMOTE_ADDR</td><td style="vertical-align:top;">:</td><td><div>127.0.0.1</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">REMOTE_PORT</td><td style="vertical-align:top;">:</td><td><div>51131</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">REQUEST_METHOD</td><td style="vertical-align:top;">:</td><td><div>GET</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">SCRIPT_NAME</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">SERVER_NAME</td><td style="vertical-align:top;">:</td><td><div>maclogair.local</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">SERVER_PORT</td><td style="vertical-align:top;">:</td><td><div>8088</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">SERVER_PROTOCOL</td><td style="vertical-align:top;">:</td><td><div>HTTP/1.1</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">SERVER_SOFTWARE</td><td style="vertical-align:top;">:</td><td><div>Rocket 1.2.6</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">app_folders</td><td style="vertical-align:top;">:</td><td><div>set([&#x27;/Users/logyuan/Documents/web2py/applications/fbBrt/&#x27;, &#x27;/Users/logyuan/Documents/web2py/applications/admin/&#x27;, &#x27;/Users/logyuan/Documents/web2py/applications/welcome/&#x27;])</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">applications_parent</td><td style="vertical-align:top;">:</td><td><div>/Users/logyuan/Documents/web2py</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">cmd_args</td><td style="vertical-align:top;">:</td><td><div><table></table></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">cmd_options</td><td style="vertical-align:top;">:</td><td><div>&lt;Values at 0x10e1944d0: {&#x27;verbose&#x27;: False, &#x27;ip&#x27;: &#x27;127.0.0.1&#x27;, &#x27;debuglevel&#x27;: 30, &#x27;with_scheduler&#x27;: False, &#x27;ips&#x27;: [&#x27;192.168.2.1&#x27;, &#x27;fe80::60c:ceff:fee3:df4a%en0&#x27;, &#x27;10.37.129.2&#x27;, &#x27;fe80::40c:ceff:fe3e:b700%bridge0&#x27;, &#x27;10.211.55.2&#x27;, &#x27;192.168.1.5&#x27;], &#x27;shutdown_timeout&#x27;: 5, &#x27;taskbar&#x27;: False, &#x27;with_coverage&#x27;: False, &#x27;port&#x27;: 8000, &#x27;maxthreads&#x27;: None, &#x27;softcron&#x27;: False, &#x27;server_name&#x27;: &#x27;maclogair.local&#x27;, &#x27;bpython&#x27;: False, &#x27;nogui&#x27;: False, &#x27;pid_filename&#x27;: &#x27;httpserver.pid&#x27;, &#x27;extcron&#x27;: False, &#x27;runcron&#x27;: False, &#x27;run_system_tests&#x27;: False, &#x27;test&#x27;: None, &#x27;folder&#x27;: &#x27;/Users/logyuan/Documents/web2py&#x27;, &#x27;config&#x27;: &#x27;&#x27;, &#x27;minthreads&#x27;: None, &#x27;shell&#x27;: None, &#x27;run&#x27;: &#x27;&#x27;, &#x27;log_filename&#x27;: &#x27;httpserver.log&#x27;, &#x27;profiler_dir&#x27;: None, &#x27;args&#x27;: [&#x27;&#x27;], &#x27;socket_timeout&#x27;: 5, &#x27;ssl_ca_certificate&#x27;: None, &#x27;scheduler&#x27;: None, &#x27;interfaces&#x27;: None, &#x27;ssl_private_key&#x27;: &#x27;&#x27;, &#x27;scheduler_groups&#x27;: None, &#x27;password&#x27;: &#x27;&lt;ask&gt;&#x27;, &#x27;request_queue_size&#x27;: 5, &#x27;ssl_certificate&#x27;: &#x27;&#x27;, &#x27;cronjob&#x27;: False, &#x27;numthreads&#x27;: None, &#x27;quiet&#x27;: False, &#x27;import_models&#x27;: False, &#x27;timeout&#x27;: 10, &#x27;plain&#x27;: False, &#x27;nobanner&#x27;: False}&gt;</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">db_sessions</td><td style="vertical-align:top;">:</td><td><div>set([])</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">debugging</td><td style="vertical-align:top;">:</td><td><div>True</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">gluon_parent</td><td style="vertical-align:top;">:</td><td><div>/Users/logyuan/Documents/web2py</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">http_accept</td><td style="vertical-align:top;">:</td><td><div>text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">http_accept_encoding</td><td style="vertical-align:top;">:</td><td><div>gzip, deflate</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">http_accept_language</td><td style="vertical-align:top;">:</td><td><div>en-us</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">http_connection</td><td style="vertical-align:top;">:</td><td><div>keep-alive</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">http_cookie</td><td style="vertical-align:top;">:</td><td><div>session_id_admin=127.0.0.1-9af2c555-3449-4e45-8085-df8d161e40ce; session_id_fbbrt=127.0.0.1-4d79ade0-feab-47b4-b3fd-a6f87751589c; session_id_welcome=127.0.0.1-6e85adf7-33b1-401a-920c-1b9fb8d16431</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">http_host</td><td style="vertical-align:top;">:</td><td><div>localhost:8088</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">http_user_agent</td><td style="vertical-align:top;">:</td><td><div>Mozilla/5.0 (Macintosh; Intel Mac OS X 10_10_2) AppleWebKit/600.3.18 (KHTML, like Gecko) Version/8.0.3 Safari/600.3.18</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">is_jython</td><td style="vertical-align:top;">:</td><td><div>False</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">is_pypy</td><td style="vertical-align:top;">:</td><td><div>False</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">is_source</td><td style="vertical-align:top;">:</td><td><div>True</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">local_hosts</td><td style="vertical-align:top;">:</td><td><div><table><tr><td><div>192.168.2.1</div></td></tr><tr><td><div>fe80::60c:ceff:fee3:df4a%en0</div></td></tr><tr><td><div>10.37.129.2</div></td></tr><tr><td><div>::ffff:127.0.0.1</div></td></tr><tr><td><div>::1</div></td></tr><tr><td><div>10.211.55.2</div></td></tr><tr><td><div>192.168.1.5</div></td></tr><tr><td><div>fe80::40c:ceff:fe3e:b700%bridge0</div></td></tr><tr><td><div>maclogair.local</div></td></tr><tr><td><div>127.0.0.1</div></td></tr></table></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">path_info</td><td style="vertical-align:top;">:</td><td><div>/fbBrt/newsAPI/index</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">query_string</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">remote_addr</td><td style="vertical-align:top;">:</td><td><div>127.0.0.1</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">remote_port</td><td style="vertical-align:top;">:</td><td><div>51131</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">request_method</td><td style="vertical-align:top;">:</td><td><div>GET</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">request_uri</td><td style="vertical-align:top;">:</td><td><div>/fbBrt/newsAPI/index</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">script_name</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">server_name</td><td style="vertical-align:top;">:</td><td><div>maclogair.local</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">server_port</td><td style="vertical-align:top;">:</td><td><div>8088</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">server_protocol</td><td style="vertical-align:top;">:</td><td><div>HTTP/1.1</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">server_software</td><td style="vertical-align:top;">:</td><td><div>Rocket 1.2.6</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">web2py_path</td><td style="vertical-align:top;">:</td><td><div>/Users/logyuan/Documents/web2py</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">web2py_version</td><td style="vertical-align:top;">:</td><td><div>2.9.5-stable+timestamp.2014.03.20.22.57.13</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">wsgi.errors</td><td style="vertical-align:top;">:</td><td><div>&lt;open file &#x27;&lt;stderr&gt;&#x27;, mode &#x27;w&#x27; at 0x10cdab1e0&gt;</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">wsgi.file_wrapper</td><td style="vertical-align:top;">:</td><td><div>&lt;class wsgiref.util.FileWrapper at 0x10e11d870&gt;</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">wsgi.input</td><td style="vertical-align:top;">:</td><td><div>&lt;socket._fileobject object at 0x1600eb5d0&gt;</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">wsgi.multiprocess</td><td style="vertical-align:top;">:</td><td><div>False</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">wsgi.multithread</td><td style="vertical-align:top;">:</td><td><div>True</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">wsgi.run_once</td><td style="vertical-align:top;">:</td><td><div>False</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">wsgi.url_scheme</td><td style="vertical-align:top;">:</td><td><div>http</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">wsgi.version</td><td style="vertical-align:top;">:</td><td><div><table><tr><td><div>1</div></td></tr><tr><td><div>0</div></td></tr></table></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">wsgi_errors</td><td style="vertical-align:top;">:</td><td><div>&lt;open file &#x27;&lt;stderr&gt;&#x27;, mode &#x27;w&#x27; at 0x10cdab1e0&gt;</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">wsgi_file_wrapper</td><td style="vertical-align:top;">:</td><td><div>&lt;class wsgiref.util.FileWrapper at 0x10e11d870&gt;</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">wsgi_input</td><td style="vertical-align:top;">:</td><td><div>&lt;socket._fileobject object at 0x1600eb5d0&gt;</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">wsgi_multiprocess</td><td style="vertical-align:top;">:</td><td><div>False</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">wsgi_multithread</td><td style="vertical-align:top;">:</td><td><div>True</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">wsgi_run_once</td><td style="vertical-align:top;">:</td><td><div>False</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">wsgi_url_scheme</td><td style="vertical-align:top;">:</td><td><div>http</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">wsgi_version</td><td style="vertical-align:top;">:</td><td><div><table><tr><td><div>1</div></td></tr><tr><td><div>0</div></td></tr></table></div></td></tr></table></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">extension</td><td style="vertical-align:top;">:</td><td><div>html</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">folder</td><td style="vertical-align:top;">:</td><td><div>/Users/logyuan/Documents/web2py/applications/fbBrt/</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">function</td><td style="vertical-align:top;">:</td><td><div>index</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">global_settings</td><td style="vertical-align:top;">:</td><td><div><table><tr><td style="font-weight:bold;vertical-align:top;">app_folders</td><td style="vertical-align:top;">:</td><td><div>set([&#x27;/Users/logyuan/Documents/web2py/applications/fbBrt/&#x27;, &#x27;/Users/logyuan/Documents/web2py/applications/admin/&#x27;, &#x27;/Users/logyuan/Documents/web2py/applications/welcome/&#x27;])</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">applications_parent</td><td style="vertical-align:top;">:</td><td><div>/Users/logyuan/Documents/web2py</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">cmd_args</td><td style="vertical-align:top;">:</td><td><div><table></table></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">cmd_options</td><td style="vertical-align:top;">:</td><td><div>&lt;Values at 0x10e1944d0: {&#x27;verbose&#x27;: False, &#x27;ip&#x27;: &#x27;127.0.0.1&#x27;, &#x27;debuglevel&#x27;: 30, &#x27;with_scheduler&#x27;: False, &#x27;ips&#x27;: [&#x27;192.168.2.1&#x27;, &#x27;fe80::60c:ceff:fee3:df4a%en0&#x27;, &#x27;10.37.129.2&#x27;, &#x27;fe80::40c:ceff:fe3e:b700%bridge0&#x27;, &#x27;10.211.55.2&#x27;, &#x27;192.168.1.5&#x27;], &#x27;shutdown_timeout&#x27;: 5, &#x27;taskbar&#x27;: False, &#x27;with_coverage&#x27;: False, &#x27;port&#x27;: 8000, &#x27;maxthreads&#x27;: None, &#x27;softcron&#x27;: False, &#x27;server_name&#x27;: &#x27;maclogair.local&#x27;, &#x27;bpython&#x27;: False, &#x27;nogui&#x27;: False, &#x27;pid_filename&#x27;: &#x27;httpserver.pid&#x27;, &#x27;extcron&#x27;: False, &#x27;runcron&#x27;: False, &#x27;run_system_tests&#x27;: False, &#x27;test&#x27;: None, &#x27;folder&#x27;: &#x27;/Users/logyuan/Documents/web2py&#x27;, &#x27;config&#x27;: &#x27;&#x27;, &#x27;minthreads&#x27;: None, &#x27;shell&#x27;: None, &#x27;run&#x27;: &#x27;&#x27;, &#x27;log_filename&#x27;: &#x27;httpserver.log&#x27;, &#x27;profiler_dir&#x27;: None, &#x27;args&#x27;: [&#x27;&#x27;], &#x27;socket_timeout&#x27;: 5, &#x27;ssl_ca_certificate&#x27;: None, &#x27;scheduler&#x27;: None, &#x27;interfaces&#x27;: None, &#x27;ssl_private_key&#x27;: &#x27;&#x27;, &#x27;scheduler_groups&#x27;: None, &#x27;password&#x27;: &#x27;&lt;ask&gt;&#x27;, &#x27;request_queue_size&#x27;: 5, &#x27;ssl_certificate&#x27;: &#x27;&#x27;, &#x27;cronjob&#x27;: False, &#x27;numthreads&#x27;: None, &#x27;quiet&#x27;: False, &#x27;import_models&#x27;: False, &#x27;timeout&#x27;: 10, &#x27;plain&#x27;: False, &#x27;nobanner&#x27;: False}&gt;</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">db_sessions</td><td style="vertical-align:top;">:</td><td><div>set([])</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">debugging</td><td style="vertical-align:top;">:</td><td><div>True</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">gluon_parent</td><td style="vertical-align:top;">:</td><td><div>/Users/logyuan/Documents/web2py</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">is_jython</td><td style="vertical-align:top;">:</td><td><div>False</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">is_pypy</td><td style="vertical-align:top;">:</td><td><div>False</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">is_source</td><td style="vertical-align:top;">:</td><td><div>True</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">local_hosts</td><td style="vertical-align:top;">:</td><td><div><table><tr><td><div>192.168.2.1</div></td></tr><tr><td><div>fe80::60c:ceff:fee3:df4a%en0</div></td></tr><tr><td><div>10.37.129.2</div></td></tr><tr><td><div>::ffff:127.0.0.1</div></td></tr><tr><td><div>::1</div></td></tr><tr><td><div>10.211.55.2</div></td></tr><tr><td><div>192.168.1.5</div></td></tr><tr><td><div>fe80::40c:ceff:fe3e:b700%bridge0</div></td></tr><tr><td><div>maclogair.local</div></td></tr><tr><td><div>127.0.0.1</div></td></tr></table></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">web2py_version</td><td style="vertical-align:top;">:</td><td><div>2.9.5-stable+timestamp.2014.03.20.22.57.13</div></td></tr></table></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">is_https</td><td style="vertical-align:top;">:</td><td><div>False</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">is_local</td><td style="vertical-align:top;">:</td><td><div>True</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">is_restful</td><td style="vertical-align:top;">:</td><td><div>False</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">now</td><td style="vertical-align:top;">:</td><td><div>datetime.datetime(2015, 2, 26, 2, 39, 20, 64696)</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">raw_args</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">raw_extension</td><td style="vertical-align:top;">:</td><td><div>None</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">url</td><td style="vertical-align:top;">:</td><td><div>/fbBrt/newsAPI/index</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">utcnow</td><td style="vertical-align:top;">:</td><td><div>datetime.datetime(2015, 2, 25, 18, 39, 20, 64707)</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">uuid</td><td style="vertical-align:top;">:</td><td><div>fbBrt/127.0.0.1.2015-02-26.02-39-20.616fe8ff-f7c3-48ff-a69f-4dc320e8793c</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">wsgi</td><td style="vertical-align:top;">:</td><td><div>&lt;gluon.main.LazyWSGI object at 0x164a9ebd0&gt;</div></td></tr></table></div>'
+tRp70
+sS'frames'
+p71
+(lp72
+(dp73
+S'file'
+p74
+S'/Users/logyuan/Documents/web2py/gluon/restricted.py'
+p75
+sS'dump'
+p76
+(dp77
+S'environment'
+p78
+S"{'A': <class 'gluon.html.A'>, 'ANY_OF': <class 'gluon.validators.ANY_OF'>, 'Auth': <class 'gluon.tools.Auth'>, 'B': <class 'gluon.html.B'>, 'BEAUTIFY': <class 'gluon.html.BEAUTIFY'>, 'BODY': <class 'gluon.html.BODY'>, 'BR': <class 'gluon.html.BR'>, 'BUTTON': <class 'gluon.html.BUTTON'>, 'BestComments': <function BestComments>, 'CAT': <class 'gluon.html.CAT'>, ...}"
+p79
+sS'ccode'
+p80
+S'<code object <module> at 0x1623fdd30, file "/Use...plications/fbBrt/controllers/newsAPI.py", line 3>'
+p81
+ssS'lnum'
+p82
+I220
+sS'lines'
+p83
+(dp84
+I224
+S'        # do not encapsulate (obfuscate) the original RestrictedError'
+p85
+sI215
+S'    try:'
+p86
+sI216
+S'        if isinstance(code, types.CodeType):'
+p87
+sI217
+S'            ccode = code'
+p88
+sI218
+S'        else:'
+p89
+sI219
+S'            ccode = compile2(code, layer)'
+p90
+sI220
+S'        exec ccode in environment'
+p91
+sI221
+S'    except HTTP:'
+p92
+sI222
+S'        raise'
+p93
+sI223
+S'    except RestrictedError:'
+p94
+ssS'call'
+p95
+S"(code='# coding: utf8\\n# try something like\\nimport urlli...eep(1.5)\\n\\nresponse._vars=response._caller(index)\\n', environment={'A': <class 'gluon.html.A'>, 'ANY_OF': <class 'gluon.validators.ANY_OF'>, 'Auth': <class 'gluon.tools.Auth'>, 'B': <class 'gluon.html.B'>, 'BEAUTIFY': <class 'gluon.html.BEAUTIFY'>, 'BODY': <class 'gluon.html.BODY'>, 'BR': <class 'gluon.html.BR'>, 'BUTTON': <class 'gluon.html.BUTTON'>, 'BestComments': <function BestComments>, 'CAT': <class 'gluon.html.CAT'>, ...}, layer='/Users/logyuan/Documents/web2py/applications/fbBrt/controllers/newsAPI.py')"
+p96
+sS'func'
+p97
+S'restricted'
+p98
+sa(dp99
+g74
+S'/Users/logyuan/Documents/web2py/applications/fbBrt/controllers/newsAPI.py'
+p100
+sg76
+(dp101
+sg82
+I510
+sg83
+(dp102
+I499
+S'    f.close()'
+p103
+sI500
+S''
+sI501
+S'    return dict(message="OK")'
+p104
+sI502
+S'    #return len(rows)'
+p105
+sI503
+S'    #return json.dumps(female_wordclouds_nr)'
+p106
+sI504
+S''
+sI505
+S''
+sI506
+S''
+sI507
+S'def delay():'
+p107
+sI508
+S'    time.sleep(1.5)'
+p108
+ssg95
+S'()'
+p109
+sg97
+S'<module>'
+p110
+sa(dp111
+g74
+S'/Users/logyuan/Documents/web2py/gluon/globals.py'
+p112
+sg76
+(dp113
+S'self'
+p114
+S'undefined'
+p115
+sS'f'
+S'<function index>'
+p116
+ssg82
+I385
+sg83
+(dp117
+I384
+S'        self._vars = None'
+p118
+sI385
+S'        self._caller = lambda f: f()'
+p119
+sI386
+S'        self._view_environment = None'
+p120
+sI387
+S'        self._custom_commit = None'
+p121
+sI388
+S'        self._custom_rollback = None'
+p122
+sI389
+S''
+sI380
+S'        self.menu = []             # used by the default view layout'
+p123
+sI381
+S'        self.files = []            # used by web2py_ajax.html'
+p124
+sI382
+S'        self.generic_patterns = []  # patterns to allow generic views'
+p125
+sI383
+S"        self.delimiters = ('{{', '}}')"
+p126
+ssg95
+S'(f=<function index>)'
+p127
+sg97
+S'<lambda>'
+p128
+sa(dp129
+g74
+S'/Users/logyuan/Documents/web2py/applications/fbBrt/controllers/newsAPI.py'
+p130
+sg76
+(dp131
+S'global kimono_api'
+p132
+S'<function kimono_api>'
+p133
+sS'Brtnews7days_url'
+p134
+S"'https://www.kimonolabs.com/api/ajldjyxq?apikey=22879e6cd7538eea6e95b90aa70afccc'"
+p135
+ssg82
+I60
+sg83
+(dp136
+I64
+S'    mayor7days_url = "https://www.kimonolabs.com/api/863lok12?apikey=22879e6cd7538eea6e95b90aa70afccc"'
+p137
+sI55
+S'    started_time = datetime.datetime.now()'
+p138
+sI56
+S'    Brtnews24_url = "https://www.kimonolabs.com/api/47bg0pfm?apikey=22879e6cd7538eea6e95b90aa70afccc"'
+p139
+sI57
+S'    Brtnews7days_url = "https://www.kimonolabs.com/api/ajldjyxq?apikey=22879e6cd7538eea6e95b90aa70afccc"'
+p140
+sI58
+S'    Brtnews30days_url = "https://www.kimonolabs.com/api/5xnus1ws?apikey=22879e6cd7538eea6e95b90aa70afccc"'
+p141
+sI59
+S'    Brtnews1year_url = "https://www.kimonolabs.com/api/d1shcaww?apikey=22879e6cd7538eea6e95b90aa70afccc"'
+p142
+sI60
+S'    kimono_api(Brtnews7days_url, "BRT")'
+p143
+sI61
+S''
+sI62
+S''
+sI63
+S'    mayor24_url = "https://www.kimonolabs.com/api/7br3eu62?apikey=22879e6cd7538eea6e95b90aa70afccc"'
+p144
+ssg95
+S'()'
+p145
+sg97
+S'index'
+p146
+sa(dp147
+g74
+S'/Users/logyuan/Documents/web2py/applications/fbBrt/controllers/newsAPI.py'
+p148
+sg76
+(dp149
+S'fbdb.news.update_or_insert'
+p150
+S'<bound method Table.update_or_insert of <Table n...d_news_date_time,from_team,related_news_source)>>'
+p151
+sS'og'
+p152
+S"{'comment_count': 0, 'created_time': datetime.datetime(2015, 2, 24, 15, 24, 38), 'created_time_tw': datetime.datetime(2015, 2, 24, 23, 24, 38), 'description': u'\\u300c\\u5927\\u5e74\\u521d\\u516d\\u958b\\u5de5\\u65...3bb\\u5e74\\u516b\\u6708\\u52d5\\u5de5\\u5f8c\\uff0c...', 'fb_url': 'http://n.yam.com/taiwanhot/place/20150224/20150224882363.html', 'fid': '858567924189841', 'share_count': 7, 'title': u'\\u6771\\u52e2\\u8c50\\u539f\\u751f\\u6d3b\\u5708\\u90...\\u3000\\u6771\\u52e2\\u4eba\\u6297\\u8b70\\u6012\\u543c', 'type': 'article', 'updated_time': datetime.datetime(2015, 2, 25, 16, 9, 27), ...}"
+p153
+sS'fbdb.news'
+p154
+S'<Table news (id,fid,created_time,created_time_tw...ed_news_date_time,from_team,related_news_source)>'
+p155
+sS'href'
+p156
+S"u'http://n.yam.com/taiwanhot/place/20150224/20150224882363.html'"
+p157
+sS'from_team'
+p158
+S"'BRT'"
+p159
+sS'global fbdb'
+p160
+S'<DAL uri="mongodb://localhost/fbbrt">'
+p161
+sS'fbdb.news.href'
+p162
+S'<gluon.dal.Field object>'
+p163
+ssg82
+I228
+sg83
+(dp164
+I224
+S'            created_time = og["created_time"]'
+p165
+sI225
+S'            updated_time = og["updated_time"]'
+p166
+sI226
+S'            share_count = og["share_count"]'
+p167
+sI227
+S'            comment_count = og["comment_count"]'
+p168
+sI228
+S'            fbdb.news.update_or_insert(fbdb.news.href==href,from_team=from_team,**og)'
+p169
+sI229
+S'            # fbdb.news.update_or_insert(fbdb.news.href==href, fb_url=fb_url, href=href, created_time=created_time,updated_time=updated_time, date_time=date_time, source=source, summary=summary, title=title, photo=photo, related_news=json.dumps(related_news),'
+p170
+sI230
+S'            #                  related_news_date_time=related_news_date_time,'
+p171
+sI231
+S'            #                  related_news_source=json.dumps(related_news_source), from_team=from_team,'
+p172
+sI232
+S'            #                  share_count=share_count, comment_count=comment_count)'
+p173
+sI223
+S'            fb_url = og["fb_url"]'
+p174
+ssg95
+S"(url='https://www.kimonolabs.com/api/ajldjyxq?apikey=22879e6cd7538eea6e95b90aa70afccc', from_team='BRT')"
+p175
+sg97
+S'kimono_api'
+p176
+sa(dp177
+g74
+S'/Users/logyuan/Documents/web2py/gluon/dal.py'
+p178
+sg76
+(dp179
+S'self.insert'
+p180
+S'<bound method Table.insert of <Table news (id,fi...d_news_date_time,from_team,related_news_source)>>'
+p181
+sS'values'
+p182
+S"{'comment_count': 0, 'created_time': datetime.datetime(2015, 2, 24, 15, 24, 38), 'created_time_tw': datetime.datetime(2015, 2, 24, 23, 24, 38), 'description': u'\\u300c\\u5927\\u5e74\\u521d\\u516d\\u958b\\u5de5\\u65...3bb\\u5e74\\u516b\\u6708\\u52d5\\u5de5\\u5f8c\\uff0c...', 'fb_url': 'http://n.yam.com/taiwanhot/place/20150224/20150224882363.html', 'fid': '858567924189841', 'from_team': 'BRT', 'share_count': 7, 'title': u'\\u6771\\u52e2\\u8c50\\u539f\\u751f\\u6d3b\\u5708\\u90...\\u3000\\u6771\\u52e2\\u4eba\\u6297\\u8b70\\u6012\\u543c', 'type': 'article', ...}"
+p183
+sS'self'
+p184
+S'<Table news (id,fid,created_time,created_time_tw...ed_news_date_time,from_team,related_news_source)>'
+p185
+sS'newid'
+p186
+g115
+ssg82
+I9182
+sg83
+(dp187
+I9184
+S''
+sI9185
+S'    def validate_and_update_or_insert(self, _key=DEFAULT, **fields):'
+p188
+sI9186
+S"        if _key is DEFAULT or _key == '':"
+p189
+sI9177
+S'            record = self(_key)'
+p190
+sI9178
+S'        if record:'
+p191
+sI9179
+S'            record.update_record(**values)'
+p192
+sI9180
+S'            newid = None'
+p193
+sI9181
+S'        else:'
+p194
+sI9182
+S'            newid = self.insert(**values)'
+p195
+sI9183
+S'        return newid'
+p196
+ssg95
+S"(self=<Table news (id,fid,created_time,created_time_tw...ed_news_date_time,from_team,related_news_source)>, _key=<Query {'href': u'http://n.yam.com/taiwanhot/place/20150224/20150224882363.html'}>, **values={'comment_count': 0, 'created_time': datetime.datetime(2015, 2, 24, 15, 24, 38), 'created_time_tw': datetime.datetime(2015, 2, 24, 23, 24, 38), 'description': u'\\u300c\\u5927\\u5e74\\u521d\\u516d\\u958b\\u5de5\\u65...3bb\\u5e74\\u516b\\u6708\\u52d5\\u5de5\\u5f8c\\uff0c...', 'fb_url': 'http://n.yam.com/taiwanhot/place/20150224/20150224882363.html', 'fid': '858567924189841', 'from_team': 'BRT', 'share_count': 7, 'title': u'\\u6771\\u52e2\\u8c50\\u539f\\u751f\\u6d3b\\u5708\\u90...\\u3000\\u6771\\u52e2\\u4eba\\u6297\\u8b70\\u6012\\u543c', 'type': 'article', ...})"
+p197
+sg97
+S'update_or_insert'
+p198
+sa(dp199
+g74
+S'/Users/logyuan/Documents/web2py/gluon/dal.py'
+p200
+sg76
+(dp201
+S'self._listify'
+p202
+S'<bound method Table._listify of <Table news (id,...d_news_date_time,from_team,related_news_source)>>'
+p203
+sS'fields'
+p204
+S"{'comment_count': 0, 'created_time': datetime.datetime(2015, 2, 24, 15, 24, 38), 'created_time_tw': datetime.datetime(2015, 2, 24, 23, 24, 38), 'description': u'\\u300c\\u5927\\u5e74\\u521d\\u516d\\u958b\\u5de5\\u65...3bb\\u5e74\\u516b\\u6708\\u52d5\\u5de5\\u5f8c\\uff0c...', 'fb_url': 'http://n.yam.com/taiwanhot/place/20150224/20150224882363.html', 'fid': '858567924189841', 'from_team': 'BRT', 'share_count': 7, 'title': u'\\u6771\\u52e2\\u8c50\\u539f\\u751f\\u6d3b\\u5708\\u90...\\u3000\\u6771\\u52e2\\u4eba\\u6297\\u8b70\\u6012\\u543c', 'type': 'article', ...}"
+p205
+sS'self'
+p206
+S'<Table news (id,fid,created_time,created_time_tw...ed_news_date_time,from_team,related_news_source)>'
+p207
+sS'ret'
+p208
+g115
+sS'self._db._adapter'
+p209
+S'<gluon.dal.MongoDBAdapter object>'
+p210
+sS'self._db._adapter.insert'
+p211
+S'<bound method MongoDBAdapter.insert of <gluon.dal.MongoDBAdapter object>>'
+p212
+sS'self._db'
+p213
+S'<DAL uri="mongodb://localhost/fbbrt">'
+p214
+ssg82
+I9114
+sg83
+(dp215
+I9109
+S''
+sI9110
+S'    def insert(self, **fields):'
+p216
+sI9111
+S'        fields = self._defaults(fields)'
+p217
+sI9112
+S'        self._attempt_upload(fields)'
+p218
+sI9113
+S'        if any(f(fields) for f in self._before_insert): return 0'
+p219
+sI9114
+S'        ret =  self._db._adapter.insert(self, self._listify(fields))'
+p220
+sI9115
+S'        if ret and self._after_insert:'
+p221
+sI9116
+S'            fields = Row(fields)'
+p222
+sI9117
+S'            [f(fields,ret) for f in self._after_insert]'
+p223
+sI9118
+S'        return ret'
+p224
+ssg95
+S"(self=<Table news (id,fid,created_time,created_time_tw...ed_news_date_time,from_team,related_news_source)>, **fields={'comment_count': 0, 'created_time': datetime.datetime(2015, 2, 24, 15, 24, 38), 'created_time_tw': datetime.datetime(2015, 2, 24, 23, 24, 38), 'description': u'\\u300c\\u5927\\u5e74\\u521d\\u516d\\u958b\\u5de5\\u65...3bb\\u5e74\\u516b\\u6708\\u52d5\\u5de5\\u5f8c\\uff0c...', 'fb_url': 'http://n.yam.com/taiwanhot/place/20150224/20150224882363.html', 'fid': '858567924189841', 'from_team': 'BRT', 'share_count': 7, 'title': u'\\u6771\\u52e2\\u8c50\\u539f\\u751f\\u6d3b\\u5708\\u90...\\u3000\\u6771\\u52e2\\u4eba\\u6297\\u8b70\\u6012\\u543c', 'type': 'article', ...})"
+p225
+sg97
+S'insert'
+p226
+sa(dp227
+g74
+S'/Users/logyuan/Documents/web2py/gluon/dal.py'
+p228
+sg76
+(dp229
+S'name'
+p230
+S"'description'"
+p231
+ssg82
+I9040
+sg83
+(dp232
+I9035
+S'        # store all fields passed as input in new_fields'
+p233
+sI9036
+S'        for name in fields:'
+p234
+sI9037
+S'            if not name in self.fields:'
+p235
+sI9038
+S"                if name != 'id':"
+p236
+sI9039
+S'                    raise SyntaxError('
+p237
+sI9040
+S"                        'Field %s does not belong to the table' % name)"
+p238
+sI9041
+S'            else:'
+p239
+sI9042
+S'                field = self[name]'
+p240
+sI9043
+S'                value = fields[name]'
+p241
+sI9044
+S'                if field.filter_in:'
+p242
+ssg95
+S"(self=<Table news (id,fid,created_time,created_time_tw...ed_news_date_time,from_team,related_news_source)>, fields={'comment_count': 0, 'created_time': datetime.datetime(2015, 2, 24, 15, 24, 38), 'created_time_tw': datetime.datetime(2015, 2, 24, 23, 24, 38), 'description': u'\\u300c\\u5927\\u5e74\\u521d\\u516d\\u958b\\u5de5\\u65...3bb\\u5e74\\u516b\\u6708\\u52d5\\u5de5\\u5f8c\\uff0c...', 'fb_url': 'http://n.yam.com/taiwanhot/place/20150224/20150224882363.html', 'fid': '858567924189841', 'from_team': 'BRT', 'share_count': 7, 'title': u'\\u6771\\u52e2\\u8c50\\u539f\\u751f\\u6d3b\\u5708\\u90...\\u3000\\u6771\\u52e2\\u4eba\\u6297\\u8b70\\u6012\\u543c', 'type': 'article', ...}, update=False)"
+p243
+sg97
+S'_listify'
+p244
+sasS'pyver'
+p245
+S'Python 2.7.7: /usr/local/opt/python/bin/python2.7 (prefix: /usr/local/Cellar/python/2.7.7_1/Frameworks/Python.framework/Versions/2.7)'
+p246
+sS'session'
+p247
+g69
+(S's\xa0\x0b\x00\x00<div><table><tr><td style="font-weight:bold;vertical-align:top;">auth</td><td style="vertical-align:top;">:</td><td><div><table><tr><td style="font-weight:bold;vertical-align:top;">expiration</td><td style="vertical-align:top;">:</td><td><div>3600</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">hmac_key</td><td style="vertical-align:top;">:</td><td><div>bee7319d-7720-4b5e-8565-707f5df64861</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">last_visit</td><td style="vertical-align:top;">:</td><td><div>datetime.datetime(2015, 2, 26, 2, 39, 20, 64696)</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">remember</td><td style="vertical-align:top;">:</td><td><div>False</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">user</td><td style="vertical-align:top;">:</td><td><div><table><tr><td style="font-weight:bold;vertical-align:top;">first_name</td><td style="vertical-align:top;">:</td><td><div>Chih-Yuan</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">id</td><td style="vertical-align:top;">:</td><td><div>3L</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">last_name</td><td style="vertical-align:top;">:</td><td><div>Chen</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">registration_id</td><td style="vertical-align:top;">:</td><td><div>10152377427986527</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">registration_key</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">username</td><td style="vertical-align:top;">:</td><td><div>10152377427986527</div></td></tr></table></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">user_groups</td><td style="vertical-align:top;">:</td><td><div><table><tr><td style="font-weight:bold;vertical-align:top;">3</td><td style="vertical-align:top;">:</td><td><div>user_3</div></td></tr></table></div></td></tr></table></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">flash</td><td style="vertical-align:top;">:</td><td><div>None</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">redirect_uri</td><td style="vertical-align:top;">:</td><td><div>http://localhost:8088/fbBrt/default/user/login</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">token</td><td style="vertical-align:top;">:</td><td><div><table><tr><td style="font-weight:bold;vertical-align:top;">access_token</td><td style="vertical-align:top;">:</td><td><div>CAALkBx9aEWQBAI7HttHbnc2D9yRRleZBGbCOcBDOFd2y3G9IPcmVqHLdl6HRYkGY7hB8oZCUZAbE23DHWRNCLSs9pf9DA2yU4y5jXCZBCWOAJOUAgIdgZAGI8TfMY8dJKZABP3or7CYE4YmZBLaDckItww1DHhlav4Yw7KZB9CXuMSuuRmxP83wHTKv7pKbsfYdmeZCxRgOBO1u64InZBlsbVw</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">expires</td><td style="vertical-align:top;">:</td><td><div>1430064604.174472</div></td></tr></table></div></td></tr></table></div>'
+tRp248
+sS'etype'
+p249
+S"<type 'exceptions.SyntaxError'>"
+p250
+sS'date'
+p251
+S'Thu Feb 26 02:39:30 2015'
+p252
+sS'response'
+p253
+g69
+(S's\x97#\x00\x00<div><table><tr><td style="font-weight:bold;vertical-align:top;">body</td><td style="vertical-align:top;">:</td><td><div>&lt;cStringIO.StringO object at 0x11850bc00&gt;</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">cookies</td><td style="vertical-align:top;">:</td><td><div><table><tr><td style="font-weight:bold;vertical-align:top;">session_id_fbbrt</td><td style="vertical-align:top;">:</td><td><div>127.0.0.1-4d79ade0-feab-47b4-b3fd-a6f87751589c<table><tr><td style="font-weight:bold;vertical-align:top;">comment</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">domain</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">expires</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">httponly</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">max-age</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">path</td><td style="vertical-align:top;">:</td><td><div>/</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">secure</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">version</td><td style="vertical-align:top;">:</td><td><div></div></td></tr></table></div></td></tr></table></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">delimiters</td><td style="vertical-align:top;">:</td><td><div><table><tr><td><div>{{</div></td></tr><tr><td><div>}}</div></td></tr></table></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">files</td><td style="vertical-align:top;">:</td><td><div><table></table></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">flash</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">generic_patterns</td><td style="vertical-align:top;">:</td><td><div><table></table></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">google_analytics_id</td><td style="vertical-align:top;">:</td><td><div>None</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">headers</td><td style="vertical-align:top;">:</td><td><div><table><tr><td style="font-weight:bold;vertical-align:top;">X-Powered-By</td><td style="vertical-align:top;">:</td><td><div>web2py</div></td></tr></table></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">logo</td><td style="vertical-align:top;">:</td><td><div><a class="brand" href="http://www.web2py.com/"><b>web<span>2</span>py</b>&trade;&nbsp;</a></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">menu</td><td style="vertical-align:top;">:</td><td><div><table><tr><td><div><table><tr><td><div>BRT\xe6\x96\xb0\xe8\x81\x9e</div></td></tr><tr><td><div>False</div></td></tr><tr><td><div>/fbBrt/default/display_news</div></td></tr><tr><td><div><table><tr><td><div><table><tr><td><div>\xe5\x8d\xb3\xe6\x99\x82\xe6\x96\xb0\xe8\x81\x9e</div></td></tr><tr><td><div>False</div></td></tr><tr><td><div>/fbBrt/default/realtime_news</div></td></tr></table></div></td></tr><tr><td><div><table><tr><td><div>\xe6\x9c\xac\xe9\x80\xb1\xe6\x9c\x80\xe7\x86\xb1\xe9\x96\x80</div></td></tr><tr><td><div>False</div></td></tr><tr><td><div>/fbBrt/default/Hottest_news</div></td></tr></table></div></td></tr><tr><td><div><table><tr><td><div>\xe6\xad\xb7\xe5\x8f\xb2\xe6\x96\xb0\xe8\x81\x9e\xe6\x8e\x92\xe5\x90\x8d</div></td></tr><tr><td><div>False</div></td></tr><tr><td><div>/fbBrt/default/History_news</div></td></tr></table></div></td></tr></table></div></td></tr></table></div></td></tr><tr><td><div><table><tr><td><div>\xe7\xb6\xb2\xe5\x8f\x8b</div></td></tr><tr><td><div>False</div></td></tr><tr><td><div>/fbBrt/default/display_people</div></td></tr><tr><td><div><table><tr><td><div><table><tr><td><div>\xe6\x9c\x80\xe6\x96\xb0\xe5\x9b\x9e\xe8\xa6\x86</div></td></tr><tr><td><div>False</div></td></tr><tr><td><div>/fbBrt/default/addPeople</div></td></tr></table></div></td></tr></table></div></td></tr></table></div></td></tr><tr><td><div><table><tr><td><div>Page</div></td></tr><tr><td><div>False</div></td></tr><tr><td><div>/fbBrt/default/display_page</div></td></tr><tr><td><div><table><tr><td><div><table><tr><td><div>Page Count</div></td></tr><tr><td><div>False</div></td></tr><tr><td><div>/fbBrt/default/index</div></td></tr></table></div></td></tr><tr><td><div><table><tr><td><div>Add Page</div></td></tr><tr><td><div>False</div></td></tr><tr><td><div>/fbBrt/default/addPage</div></td></tr></table></div></td></tr></table></div></td></tr></table></div></td></tr><tr><td><div><table><tr><td><div>Post</div></td></tr><tr><td><div>False</div></td></tr><tr><td><div>/fbBrt/default/display_post</div></td></tr><tr><td><div><table><tr><td><div><table><tr><td><div>Add Post</div></td></tr><tr><td><div>False</div></td></tr><tr><td><div>/fbBrt/default/addpost</div></td></tr></table></div></td></tr></table></div></td></tr></table></div></td></tr></table></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">meta</td><td style="vertical-align:top;">:</td><td><div><table><tr><td style="font-weight:bold;vertical-align:top;">author</td><td style="vertical-align:top;">:</td><td><div>Your Name &lt;you@example.com&gt;</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">description</td><td style="vertical-align:top;">:</td><td><div>a cool new app</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">generator</td><td style="vertical-align:top;">:</td><td><div>Web2py Web Framework</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">keywords</td><td style="vertical-align:top;">:</td><td><div>web2py, python, framework</div></td></tr></table></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">models_to_run</td><td style="vertical-align:top;">:</td><td><div><table><tr><td><div>^\\w+\\.py$</div></td></tr><tr><td><div>^newsAPI/\\w+\\.py$</div></td></tr><tr><td><div>^newsAPI/index/\\w+\\.py$</div></td></tr></table></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">postprocessing</td><td style="vertical-align:top;">:</td><td><div><table></table></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">session_client</td><td style="vertical-align:top;">:</td><td><div>127.0.0.1</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">session_cookie_compression_level</td><td style="vertical-align:top;">:</td><td><div>None</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">session_cookie_expires</td><td style="vertical-align:top;">:</td><td><div>None</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">session_cookie_key</td><td style="vertical-align:top;">:</td><td><div>None</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">session_data_name</td><td style="vertical-align:top;">:</td><td><div>session_data_fbbrt</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">session_file</td><td style="vertical-align:top;">:</td><td><div>&lt;open file &#x27;/Users/logyuan/Documents/web2py/applications/fbBrt/sessions/127.0.0.1-4d79ade0-feab-47b4-b3fd-a6f87751589c&#x27;, mode &#x27;rb+&#x27; at 0x1184d7420&gt;</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">session_filename</td><td style="vertical-align:top;">:</td><td><div>/Users/logyuan/Documents/web2py/applications/fbBrt/sessions/127.0.0.1-4d79ade0-feab-47b4-b3fd-a6f87751589c</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">session_hash</td><td style="vertical-align:top;">:</td><td><div>ae2417fabe46a68a8367eb9afa433229</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">session_id</td><td style="vertical-align:top;">:</td><td><div>127.0.0.1-4d79ade0-feab-47b4-b3fd-a6f87751589c</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">session_id_name</td><td style="vertical-align:top;">:</td><td><div>session_id_fbbrt</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">session_locked</td><td style="vertical-align:top;">:</td><td><div>True</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">session_masterapp</td><td style="vertical-align:top;">:</td><td><div>fbBrt</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">session_new</td><td style="vertical-align:top;">:</td><td><div>False</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">session_storage_type</td><td style="vertical-align:top;">:</td><td><div>file</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">status</td><td style="vertical-align:top;">:</td><td><div>200</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">subtitle</td><td style="vertical-align:top;">:</td><td><div>customize me!</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">title</td><td style="vertical-align:top;">:</td><td><div>Fbbrt</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">view</td><td style="vertical-align:top;">:</td><td><div>newsAPI/index.html</div></td></tr></table></div>'
+tRp254
+sS'locals'
+p255
+(dp256
+S'name'
+p257
+S"'description'"
+p258
+sS'fields'
+p259
+S"{'comment_count': 0, 'created_time': datetime.datetime(2015, 2, 24, 15, 24, 38), 'created_time_tw': datetime.datetime(2015, 2, 24, 23, 24, 38), 'description': u'\\u300c\\u5927\\u5e74\\u521d\\u516d\\u958b\\u5de5\\u65...3bb\\u5e74\\u516b\\u6708\\u52d5\\u5de5\\u5f8c\\uff0c...', 'fb_url': 'http://n.yam.com/taiwanhot/place/20150224/20150224882363.html', 'fid': '858567924189841', 'from_team': 'BRT', 'share_count': 7, 'title': u'\\u6771\\u52e2\\u8c50\\u539f\\u751f\\u6d3b\\u5708\\u90...\\u3000\\u6771\\u52e2\\u4eba\\u6297\\u8b70\\u6012\\u543c', 'type': 'article', ...}"
+p260
+sS'self'
+p261
+S'<Table news (id,fid,created_time,created_time_tw...ed_news_date_time,from_team,related_news_source)>'
+p262
+sS'update'
+p263
+S'False'
+p264
+sS'value'
+p265
+S"'http://n.yam.com/taiwanhot/place/20150224/20150224882363.html'"
+p266
+sS'field'
+p267
+S'<gluon.dal.Field object>'
+p268
+sS'new_fields'
+p269
+S"{'fb_url': (<gluon.dal.Field object>, 'http://n.yam.com/taiwanhot/place/20150224/20150224882363.html')}"
+p270
+sssS'traceback'
+p271
+S'Traceback (most recent call last):\n  File "/Users/logyuan/Documents/web2py/gluon/restricted.py", line 220, in restricted\n    exec ccode in environment\n  File "/Users/logyuan/Documents/web2py/applications/fbBrt/controllers/newsAPI.py", line 510, in <module>\n  File "/Users/logyuan/Documents/web2py/gluon/globals.py", line 385, in <lambda>\n    self._caller = lambda f: f()\n  File "/Users/logyuan/Documents/web2py/applications/fbBrt/controllers/newsAPI.py", line 60, in index\n    kimono_api(Brtnews7days_url, "BRT")\n  File "/Users/logyuan/Documents/web2py/applications/fbBrt/controllers/newsAPI.py", line 228, in kimono_api\n    fbdb.news.update_or_insert(fbdb.news.href==href,from_team=from_team,**og)\n  File "/Users/logyuan/Documents/web2py/gluon/dal.py", line 9182, in update_or_insert\n    newid = self.insert(**values)\n  File "/Users/logyuan/Documents/web2py/gluon/dal.py", line 9114, in insert\n    ret =  self._db._adapter.insert(self, self._listify(fields))\n  File "/Users/logyuan/Documents/web2py/gluon/dal.py", line 9040, in _listify\n    \'Field %s does not belong to the table\' % name)\nSyntaxError: Field description does not belong to the table\n'
+p272
+s.

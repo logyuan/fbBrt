@@ -79,7 +79,7 @@ class FaceBookAccount(OAuthAccount):
     TOKEN_URL="https://graph.facebook.com/oauth/access_token"
 
     def __init__(self, g):
-        OAuthAccount.__init__(self, g, "813669195321700", "25dc2868d5a81ba7e4c14195f2d8d797",
+        OAuthAccount.__init__(self, g, "1081088951917470", "ea23cb30c9fabf0a99901ee845161ae5",
                               self.AUTH_URL, self.TOKEN_URL,
                               )
         self.graph = None

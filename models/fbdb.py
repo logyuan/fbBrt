@@ -1,6 +1,6 @@
 from gluon import current
 
-fbdb = DAL("mongodb://localhost/brt", adapter_args=dict(foreign_keys=False), db_codec='UTF-8',pool_size=20)
+fbdb = DAL("mongodb://localhost/fbbrt", adapter_args=dict(foreign_keys=False), db_codec='UTF-8',pool_size=20)
 fbdb.define_table('people',
     Field('uid','string',unique=True),
     Field('name'),
@@ -283,21 +283,23 @@ fbdb.define_table('comments',
 fbdb.define_table('news',
     Field('fid', 'string'),
     Field('created_time', 'datetime'),
+    Field('created_time_tw', 'datetime'),
     Field('updated_time', 'datetime'),
+    Field('updated_time_tw', 'datetime'),
     Field('share_count', 'integer'),
     Field('comment_count', 'integer'),
     Field('created_time', 'datetime'),
     Field('date_time', 'datetime'),
     Field('source', 'string'),
+    Field('description', 'string'),
     Field('summary', 'string'),
     Field('title', 'string'),
+    Field('type', 'string'),
     Field('href', 'string', unique=True),
     Field('fb_url', 'string', unique=True),
     Field('photo', 'string'),
     Field('related_news' , 'json', default=[]),
     Field('related_news_date_time', default=[]),
-    Field('updated_time_tw', 'datetime'),
-    Field('updated_time_utc', 'datetime'),
     Field('from_team'),
     Field('related_news_source','json', default=[])
 )
