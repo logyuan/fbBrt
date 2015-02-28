@@ -92,7 +92,9 @@ def index():
     return "OK"
 
 def test():
-    return response.json(get_og_url('http://news.ltn.com.tw/news/opinion/breakingnews/1222089'))
+    result=convertNewsComms('812216578849978_812222405516062')
+    return result
+    #return response.json(get_og_url('http://news.ltn.com.tw/news/opinion/breakingnews/1222089'))
 
 def test2():
     t=News("http://www.appledaily.com.tw/realtimenews/article/new/20150112/540406/")
@@ -513,7 +515,10 @@ def BestComments():
     #return len(rows)
     #return json.dumps(female_wordclouds_nr)
 
-
+def ConvertComments():
+    rows = fbdb(fbdb.news_comments.comments <> None).select()  #
+    for row in rows:
+        convertNewsComms(row["fid"])
 
 def delay():
     time.sleep(1.5)

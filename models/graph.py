@@ -502,15 +502,6 @@ class People:
             self.gender = None
         return None
 
-    def updateNewPosts(self): #update every 1 hour
-        #use graphAPi to get the newest 3 posts
-        days = 1
-        result = getPosts(self.fid, days)
-        posts=result["data"]
-        post_list=[]
-        for post in posts:
-            post_list.append({"fid":post["id"], "created_time" : post["created_time"] })
-        self.posts= post_list
 
     def getPostsFromDB(self, fromdate):
         fromdate = datetime.datetime.strptime(fromdate, "%Y/%m/%d")
@@ -520,32 +511,9 @@ class People:
             post_list.append({"fid":post["fid"], "created_time" : post["created_time"] })
         self.posts= post_list
 
-    def getPostsFromDate(self, fromdate):
-        import time
-        #use graphAPi to get the newest 3 posts
-        from datetime import date
-        fromdate =str(fromdate)
-        since = time.mktime(time.strptime(fromdate, '%Y/%m/%d'))-localTz()
-        #fromdate = datetime.datetime.strftime(fromdate, "%Y/%m/%d")
-        #fromdate = datetime.datetime.strptime(fromdate, "%Y/%m/%d")
-        #now = datetime.datetime.today()
-        #days = (now-fromdate).days
-        result = getPostsDate(self.fid, fromdate)
-        posts=result["postsdata"]
-        post_list=[]
-        for post in posts:
-            created_timestamp = time.mktime(time.strptime(post["created_time"], '%Y-%m-%dT%H:%M:%S+0000'))
-            if created_timestamp >= since:
-                post_list.append({"fid":post["id"], "created_time" : post["created_time"] })
-        self.posts= post_list
-
-    def getPost(self, fid):
-        self.post = Post(fid)
-        return self.post
-
-    def influence (self):
-        influence = comment_count * 0.5
-        return influence
+    #def influence (self):
+        #influence = self.comment_count * 0.5
+        #return influence
 
     def __str__(self):
         return
@@ -1534,7 +1502,7 @@ def getNewsComments(ids, from_team, news_source, href):
     import datetime
     graph = getGraph()
     try:
-        qtext = 'id,from,message,comments.limit(1000),created_time,like_count,can_remove,likes.limit(1000)'
+        qtext = 'id,from,message,comments.limit(1000),created_time,like_count, comment_count, can_remove,likes.limit(1000)'
         comments_arr = []
         data = []
         data_all = []
@@ -1564,6 +1532,7 @@ def getNewsComments(ids, from_team, news_source, href):
             from_name = item["from"]["name"] if 'from' in item else None
             message = item["message"] if 'message' in item else None
             comments_arr.append(message)
+            comment_count = item["comment_count"] if 'comment_count' in item else None
             comments = item["comments"]["data"] if 'comments' in item else None
             if comments:
                 for comm in comments:
@@ -1574,11 +1543,16 @@ def getNewsComments(ids, from_team, news_source, href):
             like_count = item["like_count"] if 'like_count' in item else 0
             likes = []
             likes = item["likes"]["data"] if 'likes' in item else []
-
+            for person in likes:
+                uid = person["id"]
+                row = fbdb(fbdb.people.uid == uid).select().first()
+                result = ''
+                if not row:
+                    result = getPeople(uid)
 
             fbdb.news_comments.update_or_insert(fbdb.news_comments.fid == fid, fid=fid, from_id=from_id,
                                                 from_name=from_name, message=message, comments=comments, created_time=created_time,
-                                                likes=likes, like_count=like_count, from_team=from_team,
+                                                likes=likes, like_count=like_count, comment_count=comment_count, from_team=from_team,
                                                 news_source=news_source, news_href=news_href, segment=segment,
                                                 news_fid=ids)
             fbdb.commit()
@@ -1609,24 +1583,25 @@ def getNewsComments(ids, from_team, news_source, href):
 
 def convertNewsComms(fid):
     graph = getGraph()
-    row= fbdb(fbdb.news.fid == fid).select().first()
+    row= fbdb(fbdb.news_comments.fid == fid).select().first()
     from_team = row['from_team']
     news_source = row['news_source']
-    news_href = row['href']
+    news_href = row['news_href']
     news_fid = row['fid']
     comments_arr = row['comments']
     for comment in comments_arr:
-        fid = comment['id']
-        com = fbdb(fbdb.comments.fid == fid).select().first()
+        ffid = comment['id']
+        com = fbdb(fbdb.news_comments.fid == ffid).select().first()
         if com == None:
-            result = getNewsComment(fid, news_source, news_href, news_fid, from_team)
-            comments = result["comments"] if 'comments' in result else []
-            for comm in comments:
-                cid = comm['id']
-                com2 = fbdb(fbdb.comments.fid == cid).select().first()
-                if com2 == None:
-                    result = getNewsComment(cid,news_source, news_href, news_fid, from_team)
-    return "ok"
+            result = getNewsComment(ffid, news_source, news_href, news_fid, from_team)
+            comments = result["comments"] if 'comments' in result else None
+            if comments:
+                for comm in comments:
+                    cid = comm['id']
+                    com2 = fbdb(fbdb.news_comments.fid == cid).select().first()
+                    if com2 == None:
+                        result = getNewsComment(cid,news_source, news_href, news_fid, from_team)
+    return str(comments_arr)
 
 @auth.requires_login()
 def getNewsComment(fid, news_source, news_href, news_fid, from_team):
@@ -1647,24 +1622,29 @@ def getNewsComment(fid, news_source, news_href, news_fid, from_team):
         from_name = post["from"]["name"] if ('from' in post) else None
         likes = []
         likes = post["likes"]['data'] if ('likes' in post) else []
-        comments = []
-        comments = post["comments"]['data'] if ('comments' in post) else []
+        for person in likes:
+            uid = person["id"]
+            row = fbdb(fbdb.people.uid == uid).select().first()
+            if not row:
+                getPeople(uid)
+
+        comments = post["comments"]['data'] if ('comments' in post) else None
         like_count = post["like_count"] if ('like_count' in post) else None
         comment_count = post["comment_count"] if ('comment_count' in post) else None
         parent = post["parent"] if ('parent' in post) else None
-        fbdb.news_comments.update_or_insert(fbdb.news_comments.fid == cid, from_id = from_id, from_name = from_name, message=message, created_time = created_time, likes=likes, comments=comments, like_count=like_count, comment_count=comment_count, from_team = from_team, parent = parent, segment = segment, news_source = news_source, news_href = news_href, news_fid = news_fid)
+        fbdb.news_comments.update_or_insert(fbdb.news_comments.fid == cid, fid = cid, from_id = from_id, from_name = from_name, message=message, created_time = created_time, likes=likes, comments=comments, like_count=like_count, comment_count=comment_count, from_team = from_team, parent = parent, segment = segment, news_source = news_source, news_href = news_href, news_fid = news_fid)
         fbdb.commit()
         row_json = fbdb(fbdb.news_comments.fid==cid).select().first().as_json()
         r_message='successfully added the comment into DB'
     except GraphAPIError, e:
-        #raise
+        raise
         row_json = {}
         r_message=e.result
         fbdb.graphAPI_Error.insert(oid=fid,date_time=datetime.datetime.today(),error_msg=r_message)
         fbdb.commit()
 
     except :
-        #raise
+        raise
         row_json = {}
         r_message="Unexpected error:", sys.exc_info()[0]
         fbdb.graphAPI_Error.insert(oid=fid,date_time=datetime.datetime.today(),error_msg=r_message)
