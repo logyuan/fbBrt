@@ -57,7 +57,7 @@ def index():
     Brtnews7days_url = "https://www.kimonolabs.com/api/ajldjyxq?apikey=22879e6cd7538eea6e95b90aa70afccc"
     Brtnews30days_url = "https://www.kimonolabs.com/api/5xnus1ws?apikey=22879e6cd7538eea6e95b90aa70afccc"
     Brtnews1year_url = "https://www.kimonolabs.com/api/d1shcaww?apikey=22879e6cd7538eea6e95b90aa70afccc"
-    kimono_api(Brtnews30days_url, "BRT")
+    kimono_api(Brtnews7days_url, "BRT")
     
 
     mayor24_url = "https://www.kimonolabs.com/api/7br3eu62?apikey=22879e6cd7538eea6e95b90aa70afccc"
@@ -132,10 +132,8 @@ def commentsByKeywords():
 
 @auth.requires_login()
 def Socialcount():
-    rows = fbdb(fbdb.news.id <> '').select()
-    for row in rows:
-        news_object = News(row.href)
-        news_object.updateSocialCount()
+    newsbrt = NewsGroup('BRT')
+    newsbrt.updateAllSocialCount()
 
     return 'OK'
 
