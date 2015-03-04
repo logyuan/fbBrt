@@ -502,7 +502,6 @@ class People:
             self.gender = None
         return None
 
-
     def getPostsFromDB(self, fromdate):
         fromdate = datetime.datetime.strptime(fromdate, "%Y/%m/%d")
         posts = fbdb((fbdb.post.status_type != "") & (fbdb.post.from_id == self.fid) & (fbdb.post.created_time >= fromdate)).select().as_list()
@@ -577,6 +576,26 @@ class News:
 
     def convertNewsComms(self):
         convertNewsComms(self.fid)
+
+    def __str__(self):
+        return
+
+class NewsGroup:
+    def __init__(self, keyword):
+        self.keyword = keyword
+        self.news_count = fbdb(fbdb.news.from_team == keyword).count()
+        self.urls_list = fbdb(fbdb.news.from_team == keyword).select(fbdb.news.fb_url).as_list()
+        self.urls_json = fbdb(fbdb.news.from_team == keyword).select(fbdb.news.fb_url).as_json()
+        return None
+
+    def updateAllSocialCount(self):
+        urls = ''
+        for url in self.urls_list:
+            if len(urls.split(',')) >=50:
+                getGroupUrlsSocialCount(urls)
+                urls = ''
+            urls = urls + ',' + url["fb_url"] if len(urls) <> 0 else url["fb_url"]
+        getGroupUrlsSocialCount(urls)
 
     def __str__(self):
         return
@@ -1456,6 +1475,7 @@ def localTz():
         offsetHour = time.timezone
     return offsetHour
 
+@auth.requires_login()
 def get_og_url(url):
     graph = getGraph()
     url = url.strip()
@@ -1496,6 +1516,50 @@ def get_og_url(url):
 
     og = {"fid":fid, "fb_url":fb_url, "updated_time_tw":updated_time_tw, "created_time_tw":created_time_tw,  "type":type, "title":title, "description":description, "comment_count":comment_count, "share_count":share_count, "updated_time":updated_time, "created_time":created_time}
     return og
+
+@auth.requires_login()
+def get_og_urls(urls):
+    graph = getGraph()
+    result = graph.request('',args={'ids': urls,'fields':'og_object{id,description,title,type,url,created_time,updated_time},share,id'})
+    delay()
+    ogs=[]
+    for url,og in result.items():
+        try:
+            #url = url.split("://")[0] + "://" + urllib.quote(url.split("://")[1])
+            fid = result[url]["og_object"]["id"] if 'og_object' in result[url] else None
+            fb_url = result[url]["og_object"]["url"] if 'og_object' in result[url] else None
+            created_time = datetime.datetime.strptime(result[url]["og_object"]["created_time"],'%Y-%m-%dT%H:%M:%S+0000') if 'created_time' in result[url]["og_object"] else None
+            updated_time = datetime.datetime.strptime(result[url]["og_object"]["updated_time"],'%Y-%m-%dT%H:%M:%S+0000') if 'updated_time' in result[url]["og_object"] else None
+            updated_time_tw = updated_time + timedelta(hours=8) if updated_time else None
+            created_time_tw = created_time + timedelta(hours=8) if created_time else None
+            description = result[url]["og_object"]["description"] if 'description' in result[url]["og_object"] else None
+            title = result[url]["og_object"]["title"] if 'title' in result[url]["og_object"] else None
+            type = result[url]["og_object"]["type"] if 'type' in result[url]["og_object"] else None
+            if "share" in result[url]:
+                comment_count = int(result[url]["share"]["comment_count"]) if 'comment_count' in result[url]["share"] else None
+                share_count = int(result[url]["share"]["share_count"]) if 'share_count' in result[url]["share"] else None
+            else:
+                comment_count = None
+                share_count = None
+        except GraphAPIError, e:
+            fid = None
+            fb_url = None
+            created_time = None
+            updated_time = None
+            updated_time_tw = None
+            created_time_tw = None
+            description = None
+            title = None
+            comment_count =  None
+            share_count = None
+            type = None
+            message = e.result
+            fbdb.graphAPI_Error.insert(oid=url, date_time=datetime.datetime.today(), error_msg=message)
+            fbdb.commit()
+
+        og = {"fid":fid, "fb_url":fb_url, "updated_time_tw":updated_time_tw, "created_time_tw":created_time_tw,  "type":type, "title":title, "description":description, "comment_count":comment_count, "share_count":share_count, "updated_time":updated_time, "created_time":created_time}
+        ogs.append(og)
+    return ogs
 
 @auth.requires_login()
 def getNewsComments(ids, from_team, news_source, href):
@@ -1664,10 +1728,11 @@ def getUrlSocialCount(href):
         fid = og["fid"]
         share_count = og["share_count"]
         comment_count = og["comment_count"]
+        news_href = og["fb_url"]
         row = fbdb(fbdb.news.fid == fid).select().first()
         if row:
             row.update_record(**og)
-        fbdb.news_social_counts.insert(fid=fid, news_href=href, comment_count=comment_count, share_count=share_count, updated_time_utc=updated_time_utc, updated_time_tw=updated_time_tw )
+        fbdb.news_social_counts.insert(fid=fid, news_href=news_href, comment_count=comment_count, share_count=share_count, updated_time_utc=updated_time_utc, updated_time_tw=updated_time_tw )
         fbdb.commit()
         message = 'successfully update the UrlSocialCount'
     except GraphAPIError, e:
@@ -1680,6 +1745,29 @@ def getUrlSocialCount(href):
         return dict(message=message, share_count=share_count, comment_count=comment_count)
 
     return dict(message=message, share_count=share_count, comment_count=comment_count)
+
+
+@auth.requires_login()
+def getGroupUrlsSocialCount(urls):
+    updated_time_utc = datetime.datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%S+0000') #use utcnow for all purposes
+    updated_time_utc = datetime.datetime.strptime(updated_time_utc,'%Y-%m-%dT%H:%M:%S+0000')
+    updated_time_tw = updated_time_utc + timedelta(hours=8)
+    ogs = get_og_urls(urls)
+    for og in ogs:
+        fid = og["fid"]
+        share_count = og["share_count"]
+        comment_count = og["comment_count"]
+        news_href = og["fb_url"]
+        row = fbdb(fbdb.news.fid == fid).select().first()
+        if row:
+            row.update_record(**og)
+        fbdb.news_social_counts.insert(fid=fid, news_href=news_href, comment_count=comment_count, share_count=share_count, updated_time_utc=updated_time_utc, updated_time_tw=updated_time_tw )
+        fbdb.commit()
+    message = 'successfully update the GroupUrlsSocialCount'
+
+
+    return dict(message=message)
+
 
 def get_news(href):
     try:

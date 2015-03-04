@@ -97,9 +97,17 @@ def test():
     #return response.json(get_og_url('http://news.ltn.com.tw/news/opinion/breakingnews/1222089'))
 
 def test2():
-    t=News("http://www.appledaily.com.tw/realtimenews/article/new/20150112/540406/")
-    t.updateNewComments()
-    return t.Comments
+    started_time = datetime.datetime.now()
+    newsbrt = NewsGroup('BRT')
+    newsbrt.updateAllSocialCount()
+    ended_time = datetime.datetime.now()
+    fbdb.event_logs.insert(function='updateAllSocialCount', started_time=started_time, ended_time=ended_time)
+    fbdb.commit()
+
+    #test5=getGroupUrlsSocialCount("http://udn.com/news/story/7548/677801,http://news.ltn.com.tw/news/local/paper/852017,http://www.chinatimes.com/newspapers/20150223000068-260210,http://www.appledaily.com.tw/realtimenews/article/new/20150112/540406/,http://www.chinatimes.com/realtimenews/20150223002434-260405")
+    #return str(test5)
+    #newsbrt = NewsGroup('BRT')
+    #return newsbrt.url_list
 
 
 def commentsByKeywords():
