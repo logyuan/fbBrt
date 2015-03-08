@@ -1913,9 +1913,9 @@ def getGroupUrlsSocialCount(urls):
         news_href = og["fb_url"]
         row = fbdb(fbdb.news.fid == fid).select().first()
         if row:
-            share_count = row["share_count"]
-            comment_count = row["comment_count"]
-            row.update_record(comment_count_since_lastupdate = comment_count,share_count_since_lastupdate = share_count, **og)
+            share_count_since_lastupdate = share_count-row["share_count"]
+            comment_count_since_lastupdate = comment_count-row["comment_count"]
+            row.update_record(comment_count_since_lastupdate = comment_count_since_lastupdate,share_count_since_lastupdate = share_count_since_lastupdate, **og)
         fbdb.news_social_counts.insert(fid=fid, news_href=news_href, comment_count=comment_count, share_count=share_count, updated_time_utc=updated_time_utc, updated_time_tw=updated_time_tw )
         fbdb.commit()
     message = 'successfully update the GroupUrlsSocialCount'
