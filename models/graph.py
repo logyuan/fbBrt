@@ -586,6 +586,7 @@ class NewsGroup:
         self.news_count = fbdb(fbdb.news.from_team == keyword).count()
         self.urls_list = fbdb(fbdb.news.from_team == keyword).select(fbdb.news.fb_url).as_list()
         self.urls_json = fbdb(fbdb.news.from_team == keyword).select(fbdb.news.fb_url).as_json()
+        self.hasComment_fids_list = fbdb((fbdb.news.from_team == keyword)&(fbdb.news.comment_count>0)).select(fbdb.news.fid).as_list()
         return None
 
     def updateAllSocialCount(self):
@@ -596,6 +597,17 @@ class NewsGroup:
                 urls = ''
             urls = urls + ',' + url["fb_url"] if len(urls) <> 0 else url["fb_url"]
         getGroupUrlsSocialCount(urls)
+
+    def updateAllComments(self):
+        fids = ''
+        for fid in self.hasComment_fids_list:
+            if len(fids.split(',')) >=50:
+                getGroupNewsComment(fids)
+                fids = ''
+            fids = fids + ',' + fid["fid"] if len(fids) <> 0 else fid["fid"]
+        getGroupNewsComment(fids)
+        return None
+
 
     def __str__(self):
         return
@@ -1523,21 +1535,21 @@ def get_og_urls(urls):
     result = graph.request('',args={'ids': urls,'fields':'og_object{id,description,title,type,url,created_time,updated_time},share,id'})
     delay()
     ogs=[]
-    for url,og in result.items():
+    for url,og_object in result.items():
         try:
             #url = url.split("://")[0] + "://" + urllib.quote(url.split("://")[1])
-            fid = result[url]["og_object"]["id"] if 'og_object' in result[url] else None
-            fb_url = result[url]["og_object"]["url"] if 'og_object' in result[url] else None
-            created_time = datetime.datetime.strptime(result[url]["og_object"]["created_time"],'%Y-%m-%dT%H:%M:%S+0000') if 'created_time' in result[url]["og_object"] else None
-            updated_time = datetime.datetime.strptime(result[url]["og_object"]["updated_time"],'%Y-%m-%dT%H:%M:%S+0000') if 'updated_time' in result[url]["og_object"] else None
+            fid = og_object["og_object"]["id"] if 'og_object' in og_object else None
+            fb_url = og_object["og_object"]["url"] if 'og_object' in og_object else None
+            created_time = datetime.datetime.strptime(og_object["og_object"]["created_time"],'%Y-%m-%dT%H:%M:%S+0000') if 'created_time' in og_object["og_object"] else None
+            updated_time = datetime.datetime.strptime(og_object["og_object"]["updated_time"],'%Y-%m-%dT%H:%M:%S+0000') if 'updated_time' in og_object["og_object"] else None
             updated_time_tw = updated_time + timedelta(hours=8) if updated_time else None
             created_time_tw = created_time + timedelta(hours=8) if created_time else None
-            description = result[url]["og_object"]["description"] if 'description' in result[url]["og_object"] else None
-            title = result[url]["og_object"]["title"] if 'title' in result[url]["og_object"] else None
-            type = result[url]["og_object"]["type"] if 'type' in result[url]["og_object"] else None
-            if "share" in result[url]:
-                comment_count = int(result[url]["share"]["comment_count"]) if 'comment_count' in result[url]["share"] else None
-                share_count = int(result[url]["share"]["share_count"]) if 'share_count' in result[url]["share"] else None
+            description = og_object["og_object"]["description"] if 'description' in og_object["og_object"] else None
+            title = og_object["og_object"]["title"] if 'title' in og_object["og_object"] else None
+            type = og_object["og_object"]["type"] if 'type' in og_object["og_object"] else None
+            if "share" in og_object:
+                comment_count = int(og_object["share"]["comment_count"]) if 'comment_count' in og_object["share"] else None
+                share_count = int(og_object["share"]["share_count"]) if 'share_count' in og_object["share"] else None
             else:
                 comment_count = None
                 share_count = None
@@ -1653,18 +1665,86 @@ def convertNewsComms(fid):
     news_href = row['news_href']
     news_fid = row['fid']
     comments_arr = row['comments']
-    for comment in comments_arr:
-        ffid = comment['id']
-        com = fbdb(fbdb.news_comments.fid == ffid).select().first()
-        if com == None:
-            result = getNewsComment(ffid, news_source, news_href, news_fid, from_team)
-            comments = result["comments"] if 'comments' in result else None
-            if comments:
-                for comm in comments:
-                    cid = comm['id']
-                    com2 = fbdb(fbdb.news_comments.fid == cid).select().first()
-                    if com2 == None:
-                        result = getNewsComment(cid,news_source, news_href, news_fid, from_team)
+    ffids = ''
+    try:
+        for comment in comments_arr:
+            ffid = comment['id']
+            ffids = ffid if ffids == '' else ffids + ',' + ffid
+            if len(ffids.split(',')) == 50:
+                results = graph.request('', args={'ids' : ffids ,'fields':'likes.limit(1000),comments.limit(1000),message,from,id,like_count,created_time,parent,comment_count'})
+                ffids = ''
+                delay()
+                for fid,post in results.items():
+                    created_time = datetime.datetime.strptime(post["created_time"],'%Y-%m-%dT%H:%M:%S+0000') if ('created_time' in post) else None
+                    message = post["message"] if ('message' in post) else None
+                    segment = list(jieba.cut(message))
+                    cid = post["id"] if ('id' in post) else None
+                    from_id = post["from"]["id"] if ('from' in post) else None
+                    if from_id <> None:
+                        person = People(from_id)
+                    from_name = post["from"]["name"] if ('from' in post) else None
+                    likes = []
+                    likes = post["likes"]['data'] if ('likes' in post) else []
+                    for person in likes:
+                        uid = person["id"]
+                        row = fbdb(fbdb.people.uid == uid).select().first()
+                        if not row:
+                            getPeople(uid)
+                    comments = post["comments"]['data'] if ('comments' in post) else None
+                    like_count = post["like_count"] if ('like_count' in post) else None
+                    comment_count = post["comment_count"] if ('comment_count' in post) else None
+                    parent = post["parent"] if ('parent' in post) else None
+                    fbdb.news_comments.update_or_insert(fbdb.news_comments.fid == cid, fid = cid, from_id = from_id, from_name = from_name, message=message, created_time = created_time, likes=likes, comments=comments, like_count=like_count, comment_count=comment_count, from_team = from_team, parent = parent, segment = segment, news_source = news_source, news_href = news_href, news_fid = news_fid)
+                    fbdb.commit()
+        results = graph.request('', args={'ids' : ffids ,'fields':'likes.limit(1000),comments.limit(1000),message,from,id,like_count,created_time,parent,comment_count'})
+        delay()
+        for fid,post in results.items():
+            created_time = datetime.datetime.strptime(post["created_time"],'%Y-%m-%dT%H:%M:%S+0000') if ('created_time' in post) else None
+            message = post["message"] if ('message' in post) else None
+            segment = list(jieba.cut(message))
+            cid = post["id"] if ('id' in post) else None
+            from_id = post["from"]["id"] if ('from' in post) else None
+            if from_id <> None:
+                person = People(from_id)
+            from_name = post["from"]["name"] if ('from' in post) else None
+            likes = []
+            likes = post["likes"]['data'] if ('likes' in post) else []
+            for person in likes:
+                uid = person["id"]
+                row = fbdb(fbdb.people.uid == uid).select().first()
+                if not row:
+                    getPeople(uid)
+            comments = post["comments"]['data'] if ('comments' in post) else None
+            like_count = post["like_count"] if ('like_count' in post) else None
+            comment_count = post["comment_count"] if ('comment_count' in post) else None
+            parent = post["parent"] if ('parent' in post) else None
+            fbdb.news_comments.update_or_insert(fbdb.news_comments.fid == cid, fid = cid, from_id = from_id, from_name = from_name, message=message, created_time = created_time, likes=likes, comments=comments, like_count=like_count, comment_count=comment_count, from_team = from_team, parent = parent, segment = segment, news_source = news_source, news_href = news_href, news_fid = news_fid)
+            fbdb.commit()
+    except GraphAPIError, e:
+        raise
+        row_json = {}
+        r_message=e.result
+        fbdb.graphAPI_Error.insert(oid=fid,date_time=datetime.datetime.today(),error_msg=r_message)
+        fbdb.commit()
+
+    except :
+        raise
+        row_json = {}
+        r_message="Unexpected error:", sys.exc_info()[0]
+        fbdb.graphAPI_Error.insert(oid=fids,date_time=datetime.datetime.today(),error_msg=r_message)
+        fbdb.commit()
+    #post = graph.request(fid, args={'fields':'likes.limit(1000),comments.limit(1000),message,from,id,like_count,created_time,parent,comment_count'})
+        #delay()
+        #com = fbdb(fbdb.news_comments.fid == ffid).select().first()
+        #if com == None:
+        #    result = getNewsComment(ffid, news_source, news_href, news_fid, from_team)
+        #    comments = result["comments"] if 'comments' in result else None
+        #    if comments:
+        #        for comm in comments:
+        #            cid = comm['id']
+        #            com2 = fbdb(fbdb.news_comments.fid == cid).select().first()
+        #            if com2 == None:
+        #                result = getNewsComment(cid,news_source, news_href, news_fid, from_team)
     return str(comments_arr)
 
 @auth.requires_login()
@@ -1717,6 +1797,77 @@ def getNewsComment(fid, news_source, news_href, news_fid, from_team):
     #    row_json = com.as_json()
     return dict(message=r_message, result=row_json)
 
+def getGroupNewsComment(fids):
+    #com = fbdb(fbdb.news_comments.fid == fid).select().first()
+    r_message = ''
+    #if com == None:
+    try:
+        graph = getGraph()
+        results = graph.request('comments/', args={'ids': fids,'fields':'likes.limit(1000),comments.limit(1000),message,from,id,like_count,created_time,parent,comment_count'})
+        print results
+        delay()
+        for fid,posts in results.items():
+            row = fbdb(fbdb.news.fid == fid).select().first()
+            news_source=row["source"]
+            news_href=row["href"]
+            news_fid=fid
+            from_team=row["from_team"]
+            next_p = ''
+
+            while next_p <> None:
+                try:
+                    next_p = posts["paging"]["cursors"]["after"] if 'next' in posts["paging"] else None
+                except:
+                    next_p = None
+                for post in posts["data"]:
+                    created_time = datetime.datetime.strptime(post["created_time"],'%Y-%m-%dT%H:%M:%S+0000') if ('created_time' in post) else None
+                    message = post["message"] if ('message' in post) else None
+                    segment = list(jieba.cut(message))
+                    cid = post["id"] if ('id' in post) else None
+                    from_id = post["from"]["id"] if ('from' in post) else None
+                    if from_id <> None:
+                        person = People(from_id)
+                    from_name = post["from"]["name"] if ('from' in post) else None
+                    likes = []
+                    likes = post["likes"]['data'] if ('likes' in post) else []
+                    for person in likes:
+                        uid = person["id"]
+                        row = fbdb(fbdb.people.uid == uid).select().first()
+                        if not row:
+                            getPeople(uid)
+
+                    comments = post["comments"]['data'] if ('comments' in post) else None
+                    like_count = post["like_count"] if ('like_count' in post) else None
+                    comment_count = post["comment_count"] if ('comment_count' in post) else None
+                    parent = post["parent"] if ('parent' in post) else None
+                    fbdb.news_comments.update_or_insert(fbdb.news_comments.fid == cid, fid = cid, from_id = from_id, from_name = from_name, message=message, created_time = created_time, likes=likes, comments=comments, like_count=like_count, comment_count=comment_count, from_team = from_team, parent = parent, segment = segment, news_source = news_source, news_href = news_href, news_fid = news_fid)
+                    fbdb.commit()
+                    if comments <> None:
+                        convertNewsComms(cid)
+                    #row_json = fbdb(fbdb.news_comments.fid==cid).select().first().as_json()
+                    r_message='successfully added the comment into DB'
+                if next_p <> None:
+                    posts = graph.request(news_fid + '/comments', args={'fields':'likes.limit(1000),comments.limit(1000),message,from,id,like_count,created_time,parent,comment_count','after': next_p,'limit':25})
+                    print 'post=   '+ str(posts)
+                    delay()
+
+
+    except GraphAPIError, e:
+        raise
+        row_json = {}
+        r_message=e.result
+        fbdb.graphAPI_Error.insert(oid=fid,date_time=datetime.datetime.today(),error_msg=r_message)
+        fbdb.commit()
+
+    except :
+        raise
+        row_json = {}
+        r_message="Unexpected error:", sys.exc_info()[0]
+        fbdb.graphAPI_Error.insert(oid=fids,date_time=datetime.datetime.today(),error_msg=r_message)
+        fbdb.commit()
+    #else:
+    #    row_json = com.as_json()
+    return dict(message=r_message)
 
 @auth.requires_login()
 def getUrlSocialCount(href):
@@ -1731,7 +1882,9 @@ def getUrlSocialCount(href):
         news_href = og["fb_url"]
         row = fbdb(fbdb.news.fid == fid).select().first()
         if row:
-            row.update_record(**og)
+            share_count = row["share_count"]
+            comment_count = row["comment_count"]
+            row.update_record(comment_count_since_lastupdate = comment_count,share_count_since_lastupdate = share_count, **og)
         fbdb.news_social_counts.insert(fid=fid, news_href=news_href, comment_count=comment_count, share_count=share_count, updated_time_utc=updated_time_utc, updated_time_tw=updated_time_tw )
         fbdb.commit()
         message = 'successfully update the UrlSocialCount'
@@ -1760,7 +1913,9 @@ def getGroupUrlsSocialCount(urls):
         news_href = og["fb_url"]
         row = fbdb(fbdb.news.fid == fid).select().first()
         if row:
-            row.update_record(**og)
+            share_count = row["share_count"]
+            comment_count = row["comment_count"]
+            row.update_record(comment_count_since_lastupdate = comment_count,share_count_since_lastupdate = share_count, **og)
         fbdb.news_social_counts.insert(fid=fid, news_href=news_href, comment_count=comment_count, share_count=share_count, updated_time_utc=updated_time_utc, updated_time_tw=updated_time_tw )
         fbdb.commit()
     message = 'successfully update the GroupUrlsSocialCount'

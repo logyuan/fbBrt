@@ -92,18 +92,31 @@ def index():
     return "OK"
 
 def test():
-    result=convertNewsComms('812216578849978_812222405516062')
-    return result
+    rows = fbdb(fbdb.news_comments.comments <> None).select()
+    for row in rows:
+        fid = row['fid']
+        convertNewsComms(fid)
+    #rows=fbdb(fbdb.news.comment_count>0).select()
+    #total = 0
+    #for row in rows:
+    #    total = total + row["comment_count"]
+    #print total
+    #result=convertNewsComms('812216578849978_812222405516062')
+    #return result
     #return response.json(get_og_url('http://news.ltn.com.tw/news/opinion/breakingnews/1222089'))
 
 def test2():
-    started_time = datetime.datetime.now()
+    # started_time = datetime.datetime.now()
     newsbrt = NewsGroup('BRT')
-    newsbrt.updateAllSocialCount()
+    # newsbrt.updateAllSocialCount()
+    # ended_time = datetime.datetime.now()
+    # fbdb.event_logs.insert(function='updateAllSocialCount', started_time=started_time, ended_time=ended_time)
+    # fbdb.commit()
+    started_time = datetime.datetime.now()
+    newsbrt.updateAllComments()
     ended_time = datetime.datetime.now()
-    fbdb.event_logs.insert(function='updateAllSocialCount', started_time=started_time, ended_time=ended_time)
+    fbdb.event_logs.insert(function='updateAllComments', started_time=started_time, ended_time=ended_time)
     fbdb.commit()
-
     #test5=getGroupUrlsSocialCount("http://udn.com/news/story/7548/677801,http://news.ltn.com.tw/news/local/paper/852017,http://www.chinatimes.com/newspapers/20150223000068-260210,http://www.appledaily.com.tw/realtimenews/article/new/20150112/540406/,http://www.chinatimes.com/realtimenews/20150223002434-260405")
     #return str(test5)
     #newsbrt = NewsGroup('BRT')
